@@ -34,7 +34,7 @@ pub trait IsIdentity {
 /// constructor.
 impl<T> IsIdentity for T where T: subtle::Equal + Identity {
     fn is_identity(&self) -> bool {
-        self.ct_eq(&T::identity()) == 1u8
+        self.ct_eq(&T::identity()).unwrap_u8() == 1u8
     }
 }
 

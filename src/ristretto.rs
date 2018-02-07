@@ -477,10 +477,10 @@ use core::ops::{Add, Sub, Neg};
 use core::ops::{AddAssign, SubAssign};
 use core::ops::{Mul, MulAssign};
 
-use subtle;
 use subtle::ConditionallyAssignable;
 use subtle::ConditionallyNegatable;
 use subtle::Equal;
+use subtle::Choice;
 
 use edwards;
 use edwards::EdwardsPoint;
@@ -536,10 +536,10 @@ impl CompressedRistretto {
         let s = FieldElement::from_bytes(self.as_bytes());
         let s_bytes_check = s.to_bytes();
         let s_encoding_is_canonical =
-            subtle::slices_equal(&s_bytes_check[..], self.as_bytes());
+            &s_bytes_check[..].ct_eq(self.as_bytes());
         let s_is_negative = s.is_negative();
 
-        if s_encoding_is_canonical == 0u8 || s_is_negative == 1u8 {
+        if s_encoding_is_canonical.unwrap_u8() == 0u8 || s_is_negative.unwrap_u8() == 1u8 {
             return None;
         }
 
@@ -563,7 +563,7 @@ impl CompressedRistretto {
 
         let t = &x * &y;
 
-        if ok == 0u8 || t.is_negative() == 1u8 || y.is_zero() == 1u8 {
+        if ok.unwrap_u8() == 0u8 || t.is_negative().unwrap_u8() == 1u8 || y.is_zero().unwrap_u8() == 1u8 {
             return None;
         } else {
             return Some(RistrettoPoint(EdwardsPoint{X: x, Y: y, Z: one, T: t}));
@@ -837,7 +837,7 @@ impl RistrettoPoint {
         maybe_s.negate();
 
         // s = -sqrt(rN/D) if rN/D is square (should happen exactly when N/D is nonsquare)
-        debug_assert_eq!(N_over_D_is_square ^ rN_over_D_is_square, 1u8);
+        debug_assert_eq!((N_over_D_is_square ^ rN_over_D_is_square).unwrap_u8(), 1u8);
         s.conditional_assign(&maybe_s, rN_over_D_is_square);
         c.conditional_assign(&r, rN_over_D_is_square);
 
@@ -942,7 +942,7 @@ impl Identity for RistrettoPoint {
 
 impl PartialEq for RistrettoPoint {
     fn eq(&self, other: &RistrettoPoint) -> bool {
-        self.ct_eq(other) == 1u8
+        self.ct_eq(other).unwrap_u8() == 1u8
     }
 }
 
@@ -951,8 +951,9 @@ impl Equal for RistrettoPoint {
     ///
     /// # Returns
     ///
-    /// `1u8` if the two `RistrettoPoint`s are equal, and `0u8` otherwise.
-    fn ct_eq(&self, other: &RistrettoPoint) -> u8 {
+    /// * `Choice(1)` if the two `RistrettoPoint`s are equal;
+    /// * `Choice(0)` otherwise.
+    fn ct_eq(&self, other: &RistrettoPoint) -> Choice {
         let X1Y2 = &self.0.X * &other.0.Y;
         let Y1X2 = &self.0.Y * &other.0.X;
         let X1X2 = &self.0.X * &other.0.X;
@@ -1110,7 +1111,7 @@ impl RistrettoBasepointTable {
 // ------------------------------------------------------------------------
 
 impl ConditionallyAssignable for RistrettoPoint {
-    /// Conditionally assign `other` to `self`, if `choice == 1u8`.
+    /// Conditionally assign `other` to `self`, if `choice == Choice(1)`.
     ///
     /// # Example
     ///
@@ -1118,24 +1119,26 @@ impl ConditionallyAssignable for RistrettoPoint {
     /// # extern crate subtle;
     /// # extern crate curve25519_dalek;
     /// #
-    /// # use subtle::ConditionallyAssignable;
+    /// use subtle::ConditionallyAssignable;
+    /// use subtle::Choice;
     /// #
     /// # use curve25519_dalek::traits::Identity;
     /// # use curve25519_dalek::ristretto::RistrettoPoint;
     /// # use curve25519_dalek::constants;
     /// # fn main() {
+    ///
     /// let A = RistrettoPoint::identity();
     /// let B = constants::RISTRETTO_BASEPOINT_POINT;
     ///
     /// let mut P = A;
     ///
-    /// P.conditional_assign(&B, 0u8);
-    /// assert!(P == A);
-    /// P.conditional_assign(&B, 1u8);
-    /// assert!(P == B);
+    /// P.conditional_assign(&B, Choice::from(0));
+    /// assert_eq!(P, A);
+    /// P.conditional_assign(&B, Choice::from(1));
+    /// assert_eq!(P, B);
     /// # }
     /// ```
-    fn conditional_assign(&mut self, other: &RistrettoPoint, choice: u8) {
+    fn conditional_assign(&mut self, other: &RistrettoPoint, choice: Choice) {
         self.0.X.conditional_assign(&other.0.X, choice);
         self.0.Y.conditional_assign(&other.0.Y, choice);
         self.0.Z.conditional_assign(&other.0.Z, choice);

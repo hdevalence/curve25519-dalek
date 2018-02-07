@@ -97,10 +97,9 @@ use core::ops::{AddAssign, SubAssign};
 use core::ops::{Mul, MulAssign};
 use core::ops::Index;
 
-use subtle::slices_equal;
 use subtle::ConditionallyAssignable;
 use subtle::ConditionallyNegatable;
-// XXX subtle::Equal
+use subtle::Choice;
 use subtle::Equal;
 
 use constants;
@@ -160,11 +159,12 @@ impl CompressedEdwardsY {
         let v = &(&YY * &constants::EDWARDS_D) + &Z; // v = dy²+1
         let (is_nonzero_square, mut X) = FieldElement::sqrt_ratio(&u, &v);
 
-        if is_nonzero_square != 1u8 { return None; }
+        if is_nonzero_square.unwrap_u8() != 1u8 { return None; }
 
         // Flip the sign of X if it's not correct
-        let compressed_sign_bit = self.as_bytes()[31] >> 7;
+        let compressed_sign_bit = Choice::from(self.as_bytes()[31] >> 7);
         let    current_sign_bit = X.is_negative();
+
         X.conditional_negate(current_sign_bit ^ compressed_sign_bit);
 
         Some(EdwardsPoint{ X: X, Y: Y, Z: Z, T: &X * &Y })
@@ -278,7 +278,7 @@ impl ValidityCheck for EdwardsPoint {
 // ------------------------------------------------------------------------
 
 impl ConditionallyAssignable for EdwardsPoint {
-    fn conditional_assign(&mut self, other: &EdwardsPoint, choice: u8) {
+    fn conditional_assign(&mut self, other: &EdwardsPoint, choice: Choice) {
         self.X.conditional_assign(&other.X, choice);
         self.Y.conditional_assign(&other.Y, choice);
         self.Z.conditional_assign(&other.Z, choice);
@@ -291,15 +291,14 @@ impl ConditionallyAssignable for EdwardsPoint {
 // ------------------------------------------------------------------------
 
 impl Equal for EdwardsPoint {
-    fn ct_eq(&self, other: &EdwardsPoint) -> u8 {
-        slices_equal(self.compress().as_bytes(),
-                     other.compress().as_bytes())
+    fn ct_eq(&self, other: &EdwardsPoint) -> Choice {
+        self.compress().as_bytes().ct_eq(other.compress().as_bytes())
     }
 }
 
 impl PartialEq for EdwardsPoint {
     fn eq(&self, other: &EdwardsPoint) -> bool {
-        self.ct_eq(other) == 1u8
+        self.ct_eq(other).unwrap_u8() == 1u8
     }
 }
 
@@ -370,8 +369,8 @@ impl EdwardsPoint {
         let y = &self.Y * &recip;
         let mut s: [u8; 32];
 
-        s      =  y.to_bytes();
-        s[31] ^= (x.is_negative() << 7) as u8;
+        s = y.to_bytes();
+        s[31] ^= x.is_negative().unwrap_u8() << 7;
         CompressedEdwardsY(s)
     }
 }
@@ -1130,7 +1129,7 @@ mod test {
             Z: FieldElement::from_bytes(&two_bytes),
             T: FieldElement::zero()
         };
-        assert!(id1.ct_eq(&id2) == 1u8);
+        assert_eq!(id1.ct_eq(&id2).unwrap_u8(), 1u8);
     }
 
     /// Sanity check for conversion to precomputed points
@@ -1217,9 +1216,9 @@ mod test {
         let mut p1 = AffineNielsPoint::identity();
         let bp     = constants::ED25519_BASEPOINT_POINT.to_affine_niels();
 
-        p1.conditional_assign(&bp, 0);
+        p1.conditional_assign(&bp, Choice::from(0));
         assert_eq!(p1, id);
-        p1.conditional_assign(&bp, 1);
+        p1.conditional_assign(&bp, Choice::from(1));
         assert_eq!(p1, bp);
     }
 
