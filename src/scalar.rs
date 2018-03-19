@@ -579,6 +579,7 @@ impl Scalar {
     }
 
     /// Reduce this `Scalar` modulo \\(\ell\\).
+    #[allow(non_snake_case)]
     pub fn reduce(&self) -> Scalar {
         let x = self.unpack();
         let xR = UnpackedScalar::mul_internal(&x, &constants::R);
