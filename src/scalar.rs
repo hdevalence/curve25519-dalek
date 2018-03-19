@@ -416,6 +416,7 @@ impl Scalar {
     /// ```
     /// # extern crate curve25519_dalek;
     /// # use curve25519_dalek::scalar::Scalar;
+    /// # fn main() {
     ///
     /// let mut scalars = [
     ///     Scalar::from_u64(3),
@@ -431,6 +432,7 @@ impl Scalar {
     /// assert_eq!(scalars[1], Scalar::from_u64(5).invert());
     /// assert_eq!(scalars[2], Scalar::from_u64(7).invert());
     /// assert_eq!(scalars[3], Scalar::from_u64(11).invert());
+    /// # }
     /// ```
     #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn batch_invert(inputs: &mut [Scalar]) -> Scalar {
