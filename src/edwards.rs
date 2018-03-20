@@ -37,7 +37,7 @@
 //! To test if a point is in \\( \mathcal E[\ell] \\), use
 //! `EdwardsPoint::is_torsion_free()`.
 //!
-//! To multiply by the cofactor, use `EdwardsPoint::mult_by_cofactor()`.
+//! To multiply by the cofactor, use `EdwardsPoint::mul_by_cofactor()`.
 //!
 //! To avoid dealing with cofactors entirely, consider using Ristretto.
 //!
@@ -121,6 +121,7 @@ use scalar_mul::window::LookupTable;
 
 use traits::{Identity, IsIdentity};
 use traits::ValidityCheck;
+use traits::Doubleable;
 
 // ------------------------------------------------------------------------
 // Compressed points
@@ -476,40 +477,22 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
     /// For scalar multiplication of a basepoint,
     /// `EdwardsBasepointTable` is approximately 4x faster.
     fn mul(self, scalar: &'b Scalar) -> EdwardsPoint {
+        use scalar_mul::variable_base::mul;
+
         // If we built with AVX2, use the AVX2 backend.
-        #[cfg(all(feature="nightly", all(feature="avx2_backend", target_feature="avx2")))] {
-            use backend::avx2::edwards::ExtendedPoint;
+        #[cfg(all(feature="nightly", all(feature="avx2_backend", target_feature="avx2")))]
+        {
+            use backend::avx2::edwards::{ExtendedPoint, CachedPoint};
+
             let P_avx2 = ExtendedPoint::from(*self);
-            return EdwardsPoint::from(&P_avx2 * scalar);
+            let Q_avx2 = mul::<ExtendedPoint, CachedPoint, ExtendedPoint>(&P_avx2, scalar);
+                
+            EdwardsPoint::from(Q_avx2)
         }
-        // Otherwise, proceed as normal:
-        #[cfg(not(all(feature="nightly", all(feature="avx2_backend", target_feature="avx2"))))] {
-            // Construct a lookup table of [P,2P,3P,4P,5P,6P,7P,8P]
-            let lookup_table = LookupTable::<ProjectiveNielsPoint>::from(self);
-
-            // Setting s = scalar, compute
-            //
-            //    s = s_0 + s_1*16^1 + ... + s_63*16^63,
-            //
-            // with `-8 ≤ s_i < 8` for `0 ≤ i < 63` and `-8 ≤ s_63 ≤ 8`.
-            let scalar_digits = scalar.to_radix_16();
-
-            // Compute s*P as
-            //
-            //    s*P = P*(s_0 +   s_1*16^1 +   s_2*16^2 + ... +   s_63*16^63)
-            //    s*P =  P*s_0 + P*s_1*16^1 + P*s_2*16^2 + ... + P*s_63*16^63
-            //    s*P = P*s_0 + 16*(P*s_1 + 16*(P*s_2 + 16*( ... + P*s_63)...))
-            //
-            // We sum right-to-left.
-            let mut Q = EdwardsPoint::identity();
-            for i in (0..64).rev() {
-                // Q <-- 16*Q
-                Q = Q.mult_by_pow_2(4);
-                // Q <-- Q + P * s_i
-                Q = (&Q + &lookup_table.select(scalar_digits[i])).to_extended()
-            }
-
-            Q
+        // Otherwise, use the serial backend:
+        #[cfg(not(all(feature="nightly", all(feature="avx2_backend", target_feature="avx2"))))]
+        {
+            mul::<EdwardsPoint, ProjectiveNielsPoint, CompletedPoint>(self, scalar)
         }
     }
 }
@@ -633,7 +616,7 @@ pub fn multiscalar_mul<I, J>(scalars: I, points: J) -> EdwardsPoint
         let mut Q = EdwardsPoint::identity();
         // XXX this impl makes no effort to be cache-aware; maybe it could be improved?
         for j in (0..64).rev() {
-            Q = Q.mult_by_pow_2(4);
+            Q = Q.mul_by_pow_2(4);
             let it = scalar_digits.iter().zip(lookup_tables.iter());
             for (s_i, lookup_table_i) in it {
                 // R_i = s_{i,j} * P_i
@@ -693,7 +676,7 @@ impl EdwardsBasepointTable {
             P = (&P + &tables[i/2].select(a[i])).to_extended();
         }
 
-        P = P.mult_by_pow_2(4);
+        P = P.mul_by_pow_2(4);
 
         for i in (0..64).filter(|x| x % 2 == 0) {
             P = (&P + &tables[i/2].select(a[i])).to_extended();
@@ -733,7 +716,7 @@ impl EdwardsBasepointTable {
         for i in 0..32 {
             // P = (16^2)^i * B
             table.0[i] = LookupTable::from(&P);
-            P = P.mult_by_pow_2(8);
+            P = P.mul_by_pow_2(8);
         }
         table
     }
@@ -748,14 +731,8 @@ impl EdwardsBasepointTable {
     }
 }
 
-impl EdwardsPoint {
-    /// Multiply by the cofactor: return \\([8]P\\).
-    pub fn mult_by_cofactor(&self) -> EdwardsPoint {
-        self.mult_by_pow_2(3)
-    }
-
-    /// Compute \\([2\^k] P \\) by successive doublings. Requires \\( k > 0 \\).
-    pub(crate) fn mult_by_pow_2(&self, k: u32) -> EdwardsPoint {
+impl Doubleable for EdwardsPoint {
+    fn mul_by_pow_2(&self, k: usize) -> EdwardsPoint {
         debug_assert!( k > 0 );
         let mut r: CompletedPoint;
         let mut s = self.to_projective();
@@ -764,6 +741,13 @@ impl EdwardsPoint {
         }
         // Unroll last iteration so we can go directly to_extended()
         s.double().to_extended()
+    }
+}
+
+impl EdwardsPoint {
+    /// Multiply by the cofactor: return \\([8]P\\).
+    pub fn mul_by_cofactor(&self) -> EdwardsPoint {
+        self.mul_by_pow_2(3)
     }
 
     /// Determine if this point is of small order.
@@ -790,7 +774,7 @@ impl EdwardsPoint {
     /// assert_eq!(Q.is_small_order(), true);
     /// ```
     pub fn is_small_order(&self) -> bool {
-        self.mult_by_cofactor().is_identity()
+        self.mul_by_cofactor().is_identity()
     }
 
     /// Determine if this point is “torsion-free”, i.e., is contained in
@@ -1275,10 +1259,10 @@ mod test {
                    constants::ED25519_BASEPOINT_COMPRESSED);
     }
 
-    /// Test computing 16*basepoint vs mult_by_pow_2(4)
+    /// Test computing 16*basepoint vs mul_by_pow_2(4)
     #[test]
-    fn basepoint16_vs_mult_by_pow_2_4() {
-        let bp16 = constants::ED25519_BASEPOINT_POINT.mult_by_pow_2(4);
+    fn basepoint16_vs_mul_by_pow_2_4() {
+        let bp16 = constants::ED25519_BASEPOINT_POINT.mul_by_pow_2(4);
         assert_eq!(bp16.compress(), BASE16_CMPRSSD);
     }
 
@@ -1502,10 +1486,10 @@ mod bench {
     }
 
     #[bench]
-    fn mult_by_cofactor(b: &mut Bencher) {
+    fn mul_by_cofactor(b: &mut Bencher) {
         let p1 = constants::ED25519_BASEPOINT_POINT;
 
-        b.iter(|| p1.mult_by_cofactor());
+        b.iter(|| p1.mul_by_cofactor());
     }
 
     #[bench]

@@ -26,7 +26,7 @@ use edwards;
 use scalar::Scalar;
 use scalar_mul::window::LookupTable;
 
-use traits::Identity;
+use traits::{Identity, Doubleable};
 
 use backend::avx2::field::FieldElement32x4;
 
@@ -237,8 +237,10 @@ impl ExtendedPoint {
             ExtendedPoint(&t0 * &t1)
         }
     }
+}
 
-    pub fn mult_by_pow_2(&self, k: u32) -> ExtendedPoint {
+impl Doubleable for ExtendedPoint {
+    fn mul_by_pow_2(&self, k: usize) -> ExtendedPoint {
         let mut tmp: ExtendedPoint = *self;
         for _ in 0..k {
             tmp = tmp.double();
@@ -361,6 +363,17 @@ impl<'a, 'b> Sub<&'b ExtendedPoint> for &'a ExtendedPoint {
     }
 }
 
+impl<'a> From<&'a ExtendedPoint> for LookupTable<CachedPoint> {
+    fn from(P: &'a ExtendedPoint) -> Self {
+        let mut points = [CachedPoint::from(*P); 8];
+        for i in 0..7 {
+            points[i+1] = (P + &points[i]).into();
+        }
+        LookupTable(points)
+    }
+}
+
+
 impl From<ExtendedPoint> for LookupTable<CachedPoint> {
     fn from(P: ExtendedPoint) -> Self {
         let mut points = [CachedPoint::from(P); 8];
@@ -368,40 +381,6 @@ impl From<ExtendedPoint> for LookupTable<CachedPoint> {
             points[i+1] = (&P + &points[i]).into();
         }
         LookupTable(points)
-    }
-}
-
-impl<'a, 'b> Mul<&'b Scalar> for &'a ExtendedPoint {
-    type Output = ExtendedPoint;
-    /// Scalar multiplication: compute `scalar * self`.
-    ///
-    /// Uses a window of size 4.
-    fn mul(self, scalar: &'b Scalar) -> ExtendedPoint {
-        // Construct a lookup table of [P,2P,3P,4P,5P,6P,7P,8P]
-        let lookup_table = LookupTable::<CachedPoint>::from(*self);
-
-        // Setting s = scalar, compute
-        //
-        //    s = s_0 + s_1*16^1 + ... + s_63*16^63,
-        //
-        // with `-8 ≤ s_i < 8` for `0 ≤ i < 63` and `-8 ≤ s_63 ≤ 8`.
-        let scalar_digits = scalar.to_radix_16();
-
-        // Compute s*P as
-        //
-        //    s*P = P*(s_0 +   s_1*16^1 +   s_2*16^2 + ... +   s_63*16^63)
-        //    s*P =  P*s_0 + P*s_1*16^1 + P*s_2*16^2 + ... + P*s_63*16^63
-        //    s*P = P*s_0 + 16*(P*s_1 + 16*(P*s_2 + 16*( ... + P*s_63)...))
-        //
-        // We sum right-to-left.
-        let mut Q = ExtendedPoint::identity();
-        for i in (0..64).rev() {
-            // Q = 16*Q
-            Q = Q.mult_by_pow_2(4);
-            // Q += P*s_i
-            Q = &Q + &lookup_table.select(scalar_digits[i]);
-        }
-        Q
     }
 }
 
@@ -421,7 +400,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsBasepointTable {
             P = &P + &tables[i/2].select(a[i]);
         }
 
-        P = P.mult_by_pow_2(4);
+        P = P.mul_by_pow_2(4);
 
         for i in (0..64).filter(|x| x % 2 == 0) {
             P = &P + &tables[i/2].select(a[i]);
@@ -449,7 +428,7 @@ impl EdwardsBasepointTable {
         for i in 0..32 {
             // P = (16^2)^i * B
             table.0[i] = LookupTable::from(P);
-            P = P.mult_by_pow_2(8);
+            P = P.mul_by_pow_2(8);
         }
         table
     }
@@ -508,7 +487,7 @@ pub fn multiscalar_mul<I, J>(scalars: I, points: J) -> edwards::EdwardsPoint
     let mut Q = ExtendedPoint::identity();
     // XXX this algorithm makes no effort to be cache-aware; maybe it could be improved?
     for j in (0..64).rev() {
-        Q = Q.mult_by_pow_2(4);
+        Q = Q.mul_by_pow_2(4);
         let it = scalar_digits.iter().zip(lookup_tables.iter());
         for (s_i, lookup_table_i) in it {
             // Q = Q + s_{i,j} * P_i
@@ -854,70 +833,6 @@ mod test {
         assert_eq!(edwards::EdwardsPoint::from(Bneg).compress(),
                    (-&constants::ED25519_BASEPOINT_POINT).compress());
     }
-
-    #[test]
-    fn scalar_mult_vs_edwards_scalar_mult() {
-        let B: ExtendedPoint = constants::ED25519_BASEPOINT_POINT.into();
-        // some random bytes
-        let s = Scalar::from_bits([233, 1, 233, 147, 113, 78, 244, 120, 40, 45, 103, 51, 224, 199, 189, 218, 96, 140, 211, 112, 39, 194, 73, 216, 173, 33, 102, 93, 76, 200, 84, 12]);
-
-        let R1 = edwards::EdwardsPoint::from(&B * &s);
-        let R2 = &constants::ED25519_BASEPOINT_TABLE * &s;
-
-        assert_eq!(R1.compress(), R2.compress());
-    }
-
-    #[test]
-    fn scalar_mult_vs_basepoint_table_scalar_mult() {
-        let B: ExtendedPoint = constants::ED25519_BASEPOINT_POINT.into();
-        let B_table = EdwardsBasepointTable::create(&B);
-        // some random bytes
-        let s = Scalar::from_bits([233, 1, 233, 147, 113, 78, 244, 120, 40, 45, 103, 51, 224, 199, 189, 218, 96, 140, 211, 112, 39, 194, 73, 216, 173, 33, 102, 93, 76, 200, 84, 12]);
-
-        let P1 = &B * &s;
-        let P2 = &B_table * &s;
-
-        assert_eq!(edwards::EdwardsPoint::from(P1).compress(),
-                   edwards::EdwardsPoint::from(P2).compress());
-    }
-
-    #[test]
-    fn multiscalar_mul_vs_adding_scalar_mults() {
-        let B: ExtendedPoint = constants::ED25519_BASEPOINT_POINT.into();
-        let s1 = Scalar::from_bits([233, 1, 233, 147, 113, 78, 244, 120, 40, 45, 103, 51, 224, 199, 189, 218, 96, 140, 211, 112, 39, 194, 73, 216, 173, 33, 102, 93, 76, 200, 84, 12]);
-        let s2 = Scalar::from_bits([165, 30, 79, 89, 58, 24, 195, 245, 248, 146, 203, 236, 119, 43, 64, 119, 196, 111, 188, 251, 248, 53, 234, 59, 215, 28, 218, 13, 59, 120, 14, 4]);
-
-        let P1 = &B * &s2;
-        let P2 = &B * &s1;
-
-        let R = &(&P1 * &s1) + &(&P2 * &s2);
-
-        let R_multiscalar = multiscalar_mul(&[s1, s2], &[P1.into(), P2.into()]);
-
-        assert_eq!(edwards::EdwardsPoint::from(R).compress(),
-                   R_multiscalar.compress());
-    }
-
-    mod vartime {
-        use super::*;
-
-        #[test]
-        fn multiscalar_mul_vs_adding_scalar_mults() {
-            let B: ExtendedPoint = constants::ED25519_BASEPOINT_POINT.into();
-            let s1 = Scalar::from_bits([233, 1, 233, 147, 113, 78, 244, 120, 40, 45, 103, 51, 224, 199, 189, 218, 96, 140, 211, 112, 39, 194, 73, 216, 173, 33, 102, 93, 76, 200, 84, 12]);
-            let s2 = Scalar::from_bits([165, 30, 79, 89, 58, 24, 195, 245, 248, 146, 203, 236, 119, 43, 64, 119, 196, 111, 188, 251, 248, 53, 234, 59, 215, 28, 218, 13, 59, 120, 14, 4]);
-
-            let P1 = &B * &s2;
-            let P2 = &B * &s1;
-
-            let R = &(&P1 * &s1) + &(&P2 * &s2);
-
-            let R_multiscalar = vartime::multiscalar_mul(&[s1, s2], &[P1.into(), P2.into()]);
-
-            assert_eq!(edwards::EdwardsPoint::from(R).compress(),
-                       R_multiscalar.compress());
-        }
-    }
 }
 
 #[cfg(all(test, feature = "bench"))]
@@ -969,15 +884,6 @@ mod bench {
         let P = ExtendedPoint::from(B * &Scalar::from_u64(83973422));
 
         b.iter(|| P.double() );
-    }
-
-    #[bench]
-    fn scalar_mult(b: &mut Bencher) {
-        let B = &constants::ED25519_BASEPOINT_TABLE;
-        let P = ExtendedPoint::from(B * &Scalar::from_u64(83973422));
-        let s = Scalar::from_bits([233, 1, 233, 147, 113, 78, 244, 120, 40, 45, 103, 51, 224, 199, 189, 218, 96, 140, 211, 112, 39, 194, 73, 216, 173, 33, 102, 93, 76, 200, 84, 12]);
-
-        b.iter(|| &P * &s );
     }
 
     #[bench]

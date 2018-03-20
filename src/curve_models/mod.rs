@@ -338,6 +338,13 @@ impl CompletedPoint {
     }
 }
 
+// XXX combine with above?
+impl From<CompletedPoint> for EdwardsPoint {
+    fn from(P: CompletedPoint) -> EdwardsPoint {
+        P.to_extended()
+    }
+}
+
 // ------------------------------------------------------------------------
 // Doubling
 // ------------------------------------------------------------------------

@@ -51,3 +51,10 @@ pub(crate) trait ValidityCheck {
     /// Checks whether the point is on the curve. Not CT.
     fn is_valid(&self) -> bool;
 }
+
+/// Trait for doubling a point.
+pub(crate) trait Doubleable {
+    /// Compute \\([2\^k] P \\) by successive doublings. Requires \\( k > 0 \\).
+    fn mul_by_pow_2(&self, k: usize) -> Self;
+}
+
