@@ -685,15 +685,14 @@ impl EdwardsBasepointTable {
 }
 
 impl Doubleable for EdwardsPoint {
+    type Output = EdwardsPoint;
+
+    fn double(&self) -> EdwardsPoint {
+        ProjectivePoint::from(self).double().into()
+    }
+    
     fn mul_by_pow_2(&self, k: usize) -> EdwardsPoint {
-        debug_assert!( k > 0 );
-        let mut r: CompletedPoint;
-        let mut s = self.to_projective();
-        for _ in 0..(k-1) {
-            r = s.double(); s = r.to_projective();
-        }
-        // Unroll last iteration so we can go directly to_extended()
-        s.double().to_extended()
+        ProjectivePoint::from(self).mul_by_pow_2(k).into()
     }
 }
 
@@ -891,38 +890,25 @@ pub mod vartime {
               J: IntoIterator,
               J::Item: Borrow<EdwardsPoint>,
     {
-        // If we built with AVX2, use the AVX2 backend.
-        #[cfg(all(feature="nightly", all(feature="avx2_backend", target_feature="avx2")))] {
-            use backend::avx2::edwards as edwards_avx2;
+        // XXX later when we do more fancy multiscalar mults, we can
+        // delegate based on the iter's size hint -- hdevalence
+        use scalar_mul::vartime_straus::multiscalar_mul;
+        //assert_eq!(scalars.len(), points.len());
 
-            edwards_avx2::vartime::multiscalar_mul(scalars, points)
+        // If we built with AVX2, use the AVX2 backend.
+        #[cfg(all(feature="nightly", all(feature="avx2_backend", target_feature="avx2")))]
+        {
+            use backend::avx2::edwards::{ExtendedPoint, CachedPoint};
+            let converted_points = points
+                .into_iter()
+                .map(|point| ExtendedPoint::from(point.borrow()));
+            let Q = multiscalar_mul::<I, _, ExtendedPoint, ExtendedPoint, ExtendedPoint, CachedPoint>(scalars, converted_points);
+            EdwardsPoint::from(Q)
         }
         // Otherwise, proceed as normal:
-        #[cfg(not(all(feature="nightly", all(feature="avx2_backend", target_feature="avx2"))))] {
-            //assert_eq!(scalars.len(), points.len());
-
-            let nafs: Vec<_> = scalars.into_iter()
-                .map(|c| c.borrow().non_adjacent_form()).collect();
-            let odd_multiples: Vec<_> = points.into_iter()
-                .map(|P| OddMultiples::create(P.borrow())).collect();
-
-            let mut r = ProjectivePoint::identity();
-
-            for i in (0..255).rev() {
-                let mut t = r.double();
-
-                for (naf, odd_multiple) in nafs.iter().zip(odd_multiples.iter()) {
-                    if naf[i] > 0 {
-                        t = &t.to_extended() + &odd_multiple[( naf[i]/2) as usize];
-                    } else if naf[i] < 0 {
-                        t = &t.to_extended() - &odd_multiple[(-naf[i]/2) as usize];
-                    }
-                }
-
-                r = t.to_projective();
-            }
-
-            r.to_extended()
+        #[cfg(not(all(feature="nightly", all(feature="avx2_backend", target_feature="avx2"))))]
+        {
+            multiscalar_mul::<I, J, EdwardsPoint, CompletedPoint, ProjectivePoint, ProjectiveNielsPoint>(scalars, points)
         }
     }
 

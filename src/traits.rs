@@ -54,7 +54,11 @@ pub(crate) trait ValidityCheck {
 
 /// Trait for doubling a point.
 pub(crate) trait Doubleable {
+    type Output;
+
     /// Compute \\([2\^k] P \\) by successive doublings. Requires \\( k > 0 \\).
-    fn mul_by_pow_2(&self, k: usize) -> Self;
+    fn mul_by_pow_2(&self, k: usize) -> Self::Output;
+
+    fn double(&self) -> Self::Output;
 }
 

@@ -134,6 +134,7 @@ use constants;
 use field::FieldElement;
 use edwards::EdwardsPoint;
 use traits::ValidityCheck;
+use traits::Doubleable;
 
 // ------------------------------------------------------------------------
 // Internal point representations
@@ -339,9 +340,33 @@ impl CompletedPoint {
 }
 
 // XXX combine with above?
+impl<'a> From<&'a CompletedPoint> for EdwardsPoint {
+    fn from(P: &'a CompletedPoint) -> EdwardsPoint {
+        P.to_extended()
+    }
+}
+
 impl From<CompletedPoint> for EdwardsPoint {
     fn from(P: CompletedPoint) -> EdwardsPoint {
         P.to_extended()
+    }
+}
+
+impl From<CompletedPoint> for ProjectivePoint {
+    fn from(P: CompletedPoint) -> ProjectivePoint {
+        P.to_projective()
+    }
+}
+
+impl From<ProjectivePoint> for EdwardsPoint {
+    fn from(P: ProjectivePoint) -> EdwardsPoint {
+        P.to_extended()
+    }
+}
+
+impl<'a> From<&'a EdwardsPoint> for ProjectivePoint {
+    fn from(P: &'a EdwardsPoint) -> ProjectivePoint {
+        P.to_projective()
     }
 }
 
@@ -349,9 +374,11 @@ impl From<CompletedPoint> for EdwardsPoint {
 // Doubling
 // ------------------------------------------------------------------------
 
-impl ProjectivePoint {
+impl Doubleable for ProjectivePoint {
+    type Output = CompletedPoint;
+
     /// Double this point: return self + self
-    pub fn double(&self) -> CompletedPoint { // Double()
+    fn double(&self) -> CompletedPoint {
         let XX          = self.X.square();
         let YY          = self.Y.square();
         let ZZ2         = self.Z.square2();
@@ -367,6 +394,18 @@ impl ProjectivePoint {
             T: &ZZ2 - &YY_minus_XX
         }
     }
+
+    fn mul_by_pow_2(&self, k: usize) -> CompletedPoint {
+        debug_assert!( k > 0 );
+        let mut r: CompletedPoint;
+        let mut s = *self;
+        for _ in 0..(k-1) {
+            r = s.double(); s = r.to_projective();
+        }
+        // Unroll last iteration so we can go directly to a CompletedPoint
+        s.double()
+    }
+
 }
 
 // ------------------------------------------------------------------------

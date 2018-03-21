@@ -149,7 +149,18 @@ impl<'a> Neg for &'a ExtendedPoint {
     }
 }
 
-impl ExtendedPoint {
+
+impl Doubleable for ExtendedPoint {
+    type Output = ExtendedPoint;
+    
+    fn mul_by_pow_2(&self, k: usize) -> ExtendedPoint {
+        let mut tmp: ExtendedPoint = *self;
+        for _ in 0..k {
+            tmp = tmp.double();
+        }
+        tmp
+    }
+
     fn double(&self) -> ExtendedPoint {
         unsafe {
             use stdsimd::vendor::_mm256_permute2x128_si256;
@@ -245,13 +256,11 @@ impl ExtendedPoint {
     }
 }
 
-impl Doubleable for ExtendedPoint {
-    fn mul_by_pow_2(&self, k: usize) -> ExtendedPoint {
-        let mut tmp: ExtendedPoint = *self;
-        for _ in 0..k {
-            tmp = tmp.double();
-        }
-        tmp
+impl<'a, 'b> Sub<&'b CachedPoint> for &'a ExtendedPoint {
+    type Output = ExtendedPoint;
+
+    fn sub(self, other: &'b CachedPoint) -> ExtendedPoint {
+        self + &(-other)
     }
 }
 
@@ -437,6 +446,20 @@ impl EdwardsBasepointTable {
             P = P.mul_by_pow_2(8);
         }
         table
+    }
+}
+
+use scalar_mul::window::OddLookupTable;
+
+impl<'a> From<&'a ExtendedPoint> for OddLookupTable<CachedPoint> {
+    fn from(A: &'a ExtendedPoint) -> Self {
+        let mut Ai = [CachedPoint::from(*A); 8];
+        let A2 = A.double();
+        for i in 0..7 {
+            Ai[i + 1] = (&A2 + &Ai[i]).into();
+        }
+        // Now Ai = [A, 3A, 5A, 7A, 9A, 11A, 13A, 15A]
+        OddLookupTable(Ai)
     }
 }
 

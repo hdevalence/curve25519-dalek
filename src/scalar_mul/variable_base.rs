@@ -22,7 +22,7 @@ pub(crate) fn mul<AddLHS, AddRHS, Out>(point: &AddLHS, scalar: &Scalar) -> AddLH
 where
     for<'a, 'b> &'a AddLHS: Add<&'b AddRHS, Output = Out>,
     for<'a> LookupTable<AddRHS>: From<&'a AddLHS>,
-    AddLHS: Identity + Doubleable + From<Out>,
+    AddLHS: Identity + Doubleable<Output = AddLHS> + From<Out>,
     AddRHS: Identity + ConditionallyAssignable + ConditionallyNegatable,
 {
     // Construct a lookup table of [P,2P,3P,4P,5P,6P,7P,8P]
