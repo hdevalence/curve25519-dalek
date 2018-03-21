@@ -45,6 +45,12 @@ impl From<edwards::EdwardsPoint> for ExtendedPoint {
     }
 }
 
+impl<'a> From<&'a edwards::EdwardsPoint> for ExtendedPoint {
+    fn from(P: &'a edwards::EdwardsPoint) -> ExtendedPoint {
+        ExtendedPoint(FieldElement32x4::new(&P.X, &P.Y, &P.Z, &P.T))
+    }
+}
+
 impl From<ExtendedPoint> for edwards::EdwardsPoint {
     fn from(P: ExtendedPoint) -> edwards::EdwardsPoint {
         let tmp = P.0.split();
@@ -432,69 +438,6 @@ impl EdwardsBasepointTable {
         }
         table
     }
-}
-
-/// Internal multiscalar code.
-#[cfg(any(feature = "alloc", feature = "std"))]
-pub fn multiscalar_mul<I, J>(scalars: I, points: J) -> edwards::EdwardsPoint
-    where I: IntoIterator,
-          I::Item: Borrow<Scalar>,
-          J: IntoIterator,
-          J::Item: Borrow<edwards::EdwardsPoint>,
-{
-    //assert_eq!(scalars.len(), points.len());
-
-    use clear_on_drop::ClearOnDrop;
-    let lookup_tables_vec: Vec<_> = points.into_iter()
-        .map(|P| LookupTable::from(ExtendedPoint::from(*P.borrow())) )
-        .collect();
-
-    let lookup_tables = ClearOnDrop::new(lookup_tables_vec);
-
-    // Setting s_i = i-th scalar, compute
-    //
-    //    s_i = s_{i,0} + s_{i,1}*16^1 + ... + s_{i,63}*16^63,
-    //
-    // with `-8 ≤ s_{i,j} < 8` for `0 ≤ j < 63` and `-8 ≤ s_{i,63} ≤ 8`.
-    let scalar_digits_vec: Vec<_> = scalars.into_iter()
-        .map(|c| c.borrow().to_radix_16())
-        .collect();
-
-    // The above puts the scalar digits into a heap-allocated Vec.
-    // To ensure that these are erased, pass ownership of the Vec into a
-    // ClearOnDrop wrapper.
-    let scalar_digits = ClearOnDrop::new(scalar_digits_vec);
-
-    // Compute s_1*P_1 + ... + s_n*P_n: since
-    //
-    //    s_i*P_i = P_i*(s_{i,0} +     s_{i,1}*16^1 + ... +     s_{i,63}*16^63)
-    //    s_i*P_i =  P_i*s_{i,0} + P_i*s_{i,1}*16^1 + ... + P_i*s_{i,63}*16^63
-    //    s_i*P_i =  P_i*s_{i,0} + 16*(P_i*s_{i,1} + 16*( ... + 16*P_i*s_{i,63})...)
-    //
-    // we have the two-dimensional sum
-    //
-    //    s_1*P_1 =   P_1*s_{1,0} + 16*(P_1*s_{1,1} + 16*( ... + 16*P_1*s_{1,63})...)
-    //  + s_2*P_2 = + P_2*s_{2,0} + 16*(P_2*s_{2,1} + 16*( ... + 16*P_2*s_{2,63})...)
-    //      ...
-    //  + s_n*P_n = + P_n*s_{n,0} + 16*(P_n*s_{n,1} + 16*( ... + 16*P_n*s_{n,63})...)
-    //
-    // We sum column-wise top-to-bottom, then right-to-left,
-    // multiplying by 16 only once per column.
-    //
-    // This provides the speedup over doing n independent scalar
-    // mults: we perform 63 multiplications by 16 instead of 63*n
-    // multiplications, saving 252*(n-1) doublings.
-    let mut Q = ExtendedPoint::identity();
-    // XXX this algorithm makes no effort to be cache-aware; maybe it could be improved?
-    for j in (0..64).rev() {
-        Q = Q.mul_by_pow_2(4);
-        let it = scalar_digits.iter().zip(lookup_tables.iter());
-        for (s_i, lookup_table_i) in it {
-            // Q = Q + s_{i,j} * P_i
-            Q = &Q + &lookup_table_i.select(s_i[j]);
-        }
-    }
-    Q.into()
 }
 
 pub mod vartime {
@@ -900,18 +843,6 @@ mod bench {
         let s = Scalar::from_bits([233, 1, 233, 147, 113, 78, 244, 120, 40, 45, 103, 51, 224, 199, 189, 218, 96, 140, 211, 112, 39, 194, 73, 216, 173, 33, 102, 93, 76, 200, 84, 12]);
 
         b.iter(|| &table * &s );
-    }
-
-    #[bench]
-    fn ten_fold_scalar_mult(b: &mut Bencher) {
-        let mut csprng: OsRng = OsRng::new().unwrap();
-        // Create 10 random scalars
-        let scalars: Vec<_> = (0..10).map(|_| Scalar::random(&mut csprng)).collect();
-        // Create 10 points (by doing scalar mults)
-        let B = &constants::ED25519_BASEPOINT_TABLE;
-        let points: Vec<_> = scalars.iter().map(|s| B * s).collect();
-
-        b.iter(|| multiscalar_mul(&scalars, &points));
     }
 
     mod vartime {
