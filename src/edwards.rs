@@ -570,9 +570,11 @@ impl VartimeMultiscalarMul for EdwardsPoint {
         let mut scalars = scalars.into_iter();
         let mut points = points.into_iter();
 
+        // Lower and upper bounds on iterators
         let (s_lo, s_hi) = scalars.by_ref().size_hint();
-        let (p_lo, p_hi) = scalars.by_ref().size_hint();
+        let (p_lo, p_hi) = points.by_ref().size_hint();
 
+        // They should all be equal
         assert_eq!(s_lo, p_lo);
         assert_eq!(s_hi, Some(s_lo));
         assert_eq!(p_hi, Some(p_lo));
