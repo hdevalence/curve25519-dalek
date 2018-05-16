@@ -581,9 +581,11 @@ impl VartimeMultiscalarMul for EdwardsPoint {
 
         // Now we know there's a single size
         let size = s_lo;
+        println!("multiscalar size: {}", size);
 
         // For small problem sizes, use Straus
         if size < 190 {
+            println!("using straus");
             // If we built with AVX2, use the AVX2 backend.
             #[cfg(all(feature="avx2_backend", target_feature="avx2"))]
             {
@@ -597,6 +599,7 @@ impl VartimeMultiscalarMul for EdwardsPoint {
                 Straus::vartime_multiscalar_mul(scalars, points)
             }
         } else {
+            println!("using pippenger");
             // For large problem sizes, use Pippenger
             // If we built with AVX2, use the AVX2 backend.
             #[cfg(all(feature="avx2_backend", target_feature="avx2"))]
