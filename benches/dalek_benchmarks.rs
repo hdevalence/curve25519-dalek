@@ -25,9 +25,7 @@ mod edwards_benches {
 
     fn compress(c: &mut Criterion) {
         let B = &constants::ED25519_BASEPOINT_POINT;
-        c.bench_function("EdwardsPoint compression", move |b| {
-            b.iter(|| B.compress())
-        });
+        c.bench_function("EdwardsPoint compression", move |b| b.iter(|| B.compress()));
     }
 
     fn decompress(c: &mut Criterion) {
@@ -82,16 +80,21 @@ mod multiscalar_benches {
     use curve25519_dalek::traits::MultiscalarMul;
     use curve25519_dalek::traits::VartimeMultiscalarMul;
 
+    fn construct(n: usize) -> (Vec<Scalar>, Vec<EdwardsPoint>) {
+        let mut rng = OsRng::new().unwrap();
+        let scalars: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
+        let points: Vec<EdwardsPoint> = scalars
+            .iter()
+            .map(|s| s * &constants::ED25519_BASEPOINT_TABLE)
+            .collect();
+        (scalars, points)
+    }
+
     fn consttime_multiscalar_mul(c: &mut Criterion) {
         c.bench_function_over_inputs(
             "Constant-time variable-base multiscalar multiplication",
             |b, &&size| {
-                let mut rng = OsRng::new().unwrap();
-                let scalars: Vec<Scalar> = (0..size).map(|_| Scalar::random(&mut rng)).collect();
-                let points: Vec<EdwardsPoint> = scalars
-                    .iter()
-                    .map(|s| s * &constants::ED25519_BASEPOINT_TABLE)
-                    .collect();
+                let (scalars, points) = construct(size);
                 b.iter(|| EdwardsPoint::multiscalar_mul(&scalars, &points));
             },
             &MULTISCALAR_SIZES,
@@ -102,56 +105,34 @@ mod multiscalar_benches {
         c.bench_function_over_inputs(
             "Variable-time variable-base multiscalar multiplication",
             |b, &&size| {
-                let mut rng = OsRng::new().unwrap();
-                let scalars: Vec<Scalar> = (0..size).map(|_| Scalar::random(&mut rng)).collect();
-                let points: Vec<EdwardsPoint> = scalars
-                    .iter()
-                    .map(|s| s * &constants::ED25519_BASEPOINT_TABLE)
-                    .collect();
+                let (scalars, points) = construct(size);
                 b.iter(|| EdwardsPoint::vartime_multiscalar_mul(&scalars, &points));
             },
             &MULTISCALAR_SIZES,
         );
     }
 
-    fn precomputed_consttime_multiscalar_mul_helper(c: &mut Criterion, dynamic_fraction: f64) {
+    fn precomputed_ct_straus_helper(c: &mut Criterion, dynamic_fraction: f64) {
         let label = format!(
-            "Constant-time multiscalar mul with (1x,{:.2}x) static/dynamic ratio",
-            dynamic_fraction
+            "Constant-time mixed-base Straus with {:.2}% dynamic basepoints",
+            100.0*dynamic_fraction,
         );
         c.bench_function_over_inputs(
             &label,
-            move |b, &&static_size| {
-                let mut rng = OsRng::new().unwrap();
+            move |b, &&total_size| {
+                let dynamic_size = ((total_size as f64) * dynamic_fraction) as usize;
+                let static_size = total_size - dynamic_size;
 
-                let dynamic_size = ((static_size as f64) * dynamic_fraction) as usize;
-
-                let static_scalars: Vec<Scalar> =
-                    (0..static_size).map(|_| Scalar::random(&mut rng)).collect();
-
-                let static_points: Vec<EdwardsPoint> = static_scalars
-                    .iter()
-                    .map(|s| s * &constants::ED25519_BASEPOINT_TABLE)
-                    .collect();
-
-                let dynamic_scalars: Vec<Scalar> = (0..dynamic_size)
-                    .map(|_| Scalar::random(&mut rng))
-                    .collect();
-
-                let dynamic_points: Vec<EdwardsPoint> = dynamic_scalars
-                    .iter()
-                    .map(|s| s * &constants::ED25519_BASEPOINT_TABLE)
-                    .collect();
+                let (static_scalars, static_points) = construct(static_size);
+                let (dynamic_scalars, dynamic_points) = construct(dynamic_size);
 
                 use curve25519_dalek::edwards::PrecomputedStraus;
                 use curve25519_dalek::traits::PrecomputedMultiscalarMul;
 
                 let precomp = PrecomputedStraus::new(&static_points);
 
-                let precomp_ref = &precomp;
-
                 b.iter(|| {
-                    precomp_ref.mixed_multiscalar_mul(
+                    precomp.mixed_multiscalar_mul(
                         &static_scalars,
                         &dynamic_scalars,
                         &dynamic_points,
@@ -162,16 +143,59 @@ mod multiscalar_benches {
         );
     }
 
-    fn precomputed_consttime_multiscalar_mul_0_0x(c: &mut Criterion) {
-        precomputed_consttime_multiscalar_mul_helper(c, 0.0);
+    fn precomputed_vt_straus_helper(c: &mut Criterion, dynamic_fraction: f64) {
+        let label = format!(
+            "Variable-time mixed-base Straus with {:.2}% dynamic basepoints",
+            100.0*dynamic_fraction,
+        );
+        c.bench_function_over_inputs(
+            &label,
+            move |b, &&total_size| {
+                let dynamic_size = ((total_size as f64) * dynamic_fraction) as usize;
+                let static_size = total_size - dynamic_size;
+
+                let (static_scalars, static_points) = construct(static_size);
+                let (dynamic_scalars, dynamic_points) = construct(dynamic_size);
+
+                use curve25519_dalek::edwards::VartimePrecomputedStraus;
+                use curve25519_dalek::traits::VartimePrecomputedMultiscalarMul;
+
+                let precomp = VartimePrecomputedStraus::new(&static_points);
+
+                b.iter(|| {
+                    precomp.vartime_mixed_multiscalar_mul(
+                        &static_scalars,
+                        &dynamic_scalars,
+                        &dynamic_points,
+                    )
+                });
+            },
+            &MULTISCALAR_SIZES,
+        );
     }
 
-    fn precomputed_consttime_multiscalar_mul_0_2x(c: &mut Criterion) {
-        precomputed_consttime_multiscalar_mul_helper(c, 0.2);
+    fn precomputed_ct_straus_00_pct_dynamic(c: &mut Criterion) {
+        precomputed_ct_straus_helper(c, 0.0);
     }
 
-    fn precomputed_consttime_multiscalar_mul_1_0x(c: &mut Criterion) {
-        precomputed_consttime_multiscalar_mul_helper(c, 1.0);
+    fn precomputed_ct_straus_20_pct_dynamic(c: &mut Criterion) {
+        precomputed_ct_straus_helper(c, 0.2);
+    }
+
+    fn precomputed_ct_straus_50_pct_dynamic(c: &mut Criterion) {
+        precomputed_ct_straus_helper(c, 0.5);
+    }
+
+    fn precomputed_vt_straus_00_pct_dynamic(c: &mut Criterion) {
+        precomputed_vt_straus_helper(c, 0.0);
+    }
+
+    fn precomputed_vt_straus_20_pct_dynamic(c: &mut Criterion) {
+        precomputed_vt_straus_helper(c, 0.2);
+    }
+
+    fn precomputed_vt_straus_50_pct_dynamic(c: &mut Criterion) {
+        precomputed_vt_straus_helper(c, 0.5);
     }
 
     criterion_group!{
@@ -181,9 +205,12 @@ mod multiscalar_benches {
         targets =
         consttime_multiscalar_mul,
         vartime_multiscalar_mul,
-        precomputed_consttime_multiscalar_mul_0_0x,
-        precomputed_consttime_multiscalar_mul_0_2x,
-        precomputed_consttime_multiscalar_mul_1_0x,
+        precomputed_ct_straus_00_pct_dynamic,
+        precomputed_ct_straus_20_pct_dynamic,
+        precomputed_ct_straus_50_pct_dynamic,
+        precomputed_vt_straus_00_pct_dynamic,
+        precomputed_vt_straus_20_pct_dynamic,
+        precomputed_vt_straus_50_pct_dynamic,
     }
 }
 
