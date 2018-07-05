@@ -19,12 +19,13 @@ use edwards::EdwardsPoint;
 use scalar::Scalar;
 
 use curve_models::{AffineNielsPoint, CompletedPoint, ProjectiveNielsPoint, ProjectivePoint};
-use scalar_mul::window::{LookupTable, NafLookupTable5};
+use scalar_mul::window::{LookupTable, NafLookupTable5, NafLookupTable8};
 
 use traits::Identity;
 use traits::MultiscalarMul;
 use traits::PrecomputedMultiscalarMul;
 use traits::VartimeMultiscalarMul;
+use traits::VartimePrecomputedMultiscalarMul;
 
 /// Perform multiscalar multiplication by the interleaved window
 /// method, also known as Straus' method (since it was apparently
@@ -275,5 +276,139 @@ impl PrecomputedMultiscalarMul for PrecomputedStraus {
         }
 
         Q
+    }
+}
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub struct VartimePrecomputedStraus {
+    static_tables: Vec<NafLookupTable8<AffineNielsPoint>>,
+}
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+impl VartimePrecomputedMultiscalarMul for VartimePrecomputedStraus {
+    type Point = EdwardsPoint;
+
+    fn new<I>(static_points: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Borrow<Self::Point>,
+    {
+        VartimePrecomputedStraus {
+            static_tables: static_points
+                .into_iter()
+                .map(|point| NafLookupTable8::<AffineNielsPoint>::from(point.borrow()))
+                .collect(),
+        }
+    }
+
+    fn vartime_mixed_multiscalar_mul<I, J, K>(
+        &self,
+        static_scalars: I,
+        dynamic_scalars: J,
+        dynamic_points: K,
+    ) -> Self::Point
+    where
+        I: IntoIterator,
+        I::Item: Borrow<Scalar>,
+        J: IntoIterator,
+        J::Item: Borrow<Scalar>,
+        K: IntoIterator,
+        K::Item: Borrow<Self::Point>,
+    {
+        // Scalars for precomputed points use a NAF of width 8
+        let static_nafs: Vec<_> = static_scalars
+            .into_iter()
+            .map(|s| s.borrow().non_adjacent_form(8))
+            .collect();
+
+        // Scalars for dynamic points use a NAF of width 5
+        let dynamic_nafs: Vec<_> = dynamic_scalars
+            .into_iter()
+            .map(|s| s.borrow().non_adjacent_form(5))
+            .collect();
+
+        // Build lookup tables for dynamic points
+        let dynamic_tables: Vec<_> = dynamic_points
+            .into_iter()
+            .map(|point| NafLookupTable5::<ProjectiveNielsPoint>::from(point.borrow()))
+            .collect();
+
+        let mut r = ProjectivePoint::identity();
+
+        for i in (0..255).rev() {
+            let mut t: CompletedPoint = r.double();
+
+            for (naf, table) in static_nafs.iter().zip(self.static_tables.iter()) {
+                if naf[i] > 0 {
+                    t = &t.to_extended() + &table.select(naf[i] as usize);
+                } else if naf[i] < 0 {
+                    t = &t.to_extended() - &table.select(-naf[i] as usize);
+                }
+            }
+
+            for (naf, table) in dynamic_nafs.iter().zip(dynamic_tables.iter()) {
+                if naf[i] > 0 {
+                    t = &t.to_extended() + &table.select(naf[i] as usize);
+                } else if naf[i] < 0 {
+                    t = &t.to_extended() - &table.select(-naf[i] as usize);
+                }
+            }
+
+            r = t.to_projective();
+        }
+
+        r.to_extended()
+    }
+}
+
+#[cfg(all(test, feature = "stage2_build"))]
+mod test {
+    use super::*;
+
+    use rand::OsRng;
+
+    use constants;
+    use edwards::EdwardsPoint;
+
+    #[test]
+    fn multiscalar_mul_consistency() {
+        let n = 32;
+
+        let mut rng = OsRng::new().unwrap();
+
+        let static_scalars: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
+        let dynamic_scalars: Vec<Scalar> = (0..n).map(|_| Scalar::random(&mut rng)).collect();
+
+        let static_points: Vec<EdwardsPoint> = static_scalars
+            .iter()
+            .map(|s| s * &constants::ED25519_BASEPOINT_TABLE)
+            .collect();
+        let dynamic_points: Vec<EdwardsPoint> = dynamic_scalars
+            .iter()
+            .map(|s| s * &constants::ED25519_BASEPOINT_TABLE)
+            .collect();
+
+        let ct_precomp = PrecomputedStraus::new(&static_points);
+        let vt_precomp = VartimePrecomputedStraus::new(&static_points);
+
+        let res1 = EdwardsPoint::multiscalar_mul(
+            static_scalars.iter().chain(dynamic_scalars.iter()),
+            static_points.iter().chain(dynamic_points.iter()),
+        );
+
+        let res2 = ct_precomp.mixed_multiscalar_mul(
+            &static_scalars,
+            &dynamic_scalars,
+            &dynamic_points
+        );
+
+        let res3 = vt_precomp.vartime_mixed_multiscalar_mul(
+            &static_scalars,
+            &dynamic_scalars,
+            &dynamic_points,
+        );
+
+        assert_eq!(res1, res2);
+        assert_eq!(res1, res3);
     }
 }
