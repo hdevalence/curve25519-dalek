@@ -192,6 +192,7 @@ impl VartimeMultiscalarMul for Straus {
     }
 }
 
+/// Precomputation for constant-time multiscalar multiplication using Straus' algorithm.
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub struct PrecomputedStraus {
     lookup_tables: Vec<LookupTable<AffineNielsPoint>>,
@@ -279,6 +280,7 @@ impl PrecomputedMultiscalarMul for PrecomputedStraus {
     }
 }
 
+/// Precomputation for variable-time multiscalar multiplication using Straus' algorithm.
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub struct VartimePrecomputedStraus {
     static_tables: Vec<NafLookupTable8<AffineNielsPoint>>,
