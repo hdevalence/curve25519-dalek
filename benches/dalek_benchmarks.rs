@@ -114,7 +114,7 @@ mod multiscalar_benches {
 
     fn precomputed_ct_straus_helper(c: &mut Criterion, dynamic_fraction: f64) {
         let label = format!(
-            "Constant-time mixed-base Straus with {:.2}% dynamic basepoints",
+            "Constant-time mixed-base Straus ({:.2}pct dyn)",
             100.0*dynamic_fraction,
         );
         c.bench_function_over_inputs(
@@ -145,7 +145,7 @@ mod multiscalar_benches {
 
     fn precomputed_vt_straus_helper(c: &mut Criterion, dynamic_fraction: f64) {
         let label = format!(
-            "Variable-time mixed-base Straus with {:.2}% dynamic basepoints",
+            "Variable-time mixed-base Straus ({:.2}pct dyn)",
             100.0*dynamic_fraction,
         );
         c.bench_function_over_inputs(
