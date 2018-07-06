@@ -523,8 +523,16 @@ impl<'a, 'b> Mul<&'b EdwardsPoint> for &'a Scalar {
 // Multiscalar Multiplication impls
 // ------------------------------------------------------------------------
 
-// XXX replace this with a facade struct ??
+// If we built with AVX2, use the AVX2 backend.
+#[cfg(all(feature="avx2_backend", target_feature="avx2"))]
+pub use backend::avx2::scalar_mul::straus::PrecomputedStraus;
+#[cfg(all(feature="avx2_backend", target_feature="avx2"))]
+pub use backend::avx2::scalar_mul::straus::VartimePrecomputedStraus;
+
+// Otherwise, proceed as normal:
+#[cfg(not(all(feature="avx2_backend", target_feature="avx2")))]
 pub use scalar_mul::straus::PrecomputedStraus;
+#[cfg(not(all(feature="avx2_backend", target_feature="avx2")))]
 pub use scalar_mul::straus::VartimePrecomputedStraus;
 
 // These use the iterator's size hint and the target settings to
