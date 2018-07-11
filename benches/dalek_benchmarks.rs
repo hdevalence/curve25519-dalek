@@ -194,12 +194,46 @@ mod scalar_benches {
         );
     }
 
+    fn random_scalar_threadrng(c: &mut Criterion) {
+        c.bench_function_over_inputs(
+            "Creating random scalars using ThreadRng",
+            |b, &&size| {
+                let mut rng = rand::thread_rng();
+                let mut scalars = vec![Scalar::zero(); size];
+                b.iter(|| {
+                    for s in &mut scalars {
+                        *s = Scalar::random(&mut rng);
+                    }
+                });
+            },
+            &MULTISCALAR_SIZES,
+        );
+    }
+
+    fn random_scalar_osrng(c: &mut Criterion) {
+        c.bench_function_over_inputs(
+            "Creating random scalars using OsRng",
+            |b, &&size| {
+                let mut rng = OsRng::new().unwrap();
+                let mut scalars = vec![Scalar::zero(); size];
+                b.iter(|| {
+                    for s in &mut scalars {
+                        *s = Scalar::random(&mut rng);
+                    }
+                });
+            },
+            &MULTISCALAR_SIZES,
+        );
+    }
+
     criterion_group!{
         name = scalar_benches;
         config = Criterion::default();
         targets =
         scalar_inversion,
         batch_scalar_inversion,
+        random_scalar_osrng,
+        random_scalar_threadrng,
     }
 }
 
