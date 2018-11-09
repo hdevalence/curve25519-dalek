@@ -3,8 +3,8 @@
 use traits::Identity;
 use scalar::Scalar;
 use edwards::EdwardsPoint;
-use curve_models::ProjectiveNielsPoint;
-use scalar_mul::window::LookupTable;
+use backend::serial::curve_models::ProjectiveNielsPoint;
+use window::LookupTable;
 
 /// Perform constant-time, variable-base scalar multiplication.
 pub(crate) fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
