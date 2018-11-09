@@ -41,12 +41,12 @@ use subtle::Choice;
 use subtle::ConditionallySelectable;
 
 use edwards;
-use scalar_mul::window::{LookupTable, NafLookupTable5, NafLookupTable8};
+use window::{LookupTable, NafLookupTable5, NafLookupTable8};
 
 use traits::Identity;
 
-use backend::avx2::field::{FieldElement2625x4, Lanes, Shuffle};
-use backend::avx2::constants;
+use backend::vector::avx2::field::{FieldElement2625x4, Lanes, Shuffle};
+use backend::vector::avx2::constants;
 
 /// A point on Curve25519, using parallel Edwards formulas for curve
 /// operations.
@@ -329,7 +329,7 @@ mod test {
     use super::*;
 
     fn serial_add(P: edwards::EdwardsPoint, Q: edwards::EdwardsPoint) -> edwards::EdwardsPoint {
-        use backend::u64::field::FieldElement51;
+        use backend::serial::u64::field::FieldElement51;
 
         let (X1, Y1, Z1, T1) = (P.X, P.Y, P.Z, P.T);
         let (X2, Y2, Z2, T2) = (Q.X, Q.Y, Q.Z, Q.T);
