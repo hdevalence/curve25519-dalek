@@ -12,6 +12,7 @@
 
 #![cfg_attr(feature = "ifma_backend", feature(simd_ffi))]
 #![cfg_attr(feature = "ifma_backend", feature(link_llvm_intrinsics))]
+#![cfg_attr(feature = "nightly", feature(test))]
 
 #![cfg_attr(all(feature = "alloc", not(feature = "std")), feature(alloc))]
 #![cfg_attr(feature = "nightly", feature(cfg_target_feature))]
@@ -32,6 +33,9 @@
 //------------------------------------------------------------------------
 // External dependencies:
 //------------------------------------------------------------------------
+
+#[cfg(feature = "nightly")]
+extern crate test;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 #[macro_use]

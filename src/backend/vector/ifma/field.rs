@@ -364,4 +364,19 @@ mod test {
             assert_eq!(c, splits[i]);
         }
     }
+
+    use test::Bencher;
+
+    #[bench]
+    fn bench_mul(b: &mut Bencher) {
+        let x0 = FieldElement51::from_bytes(&[0x10; 32]);
+        let x1 = FieldElement51::from_bytes(&[0x11; 32]);
+        let x2 = FieldElement51::from_bytes(&[0x12; 32]);
+        let x3 = FieldElement51::from_bytes(&[0x13; 32]);
+
+        let x = FieldElement51x4::new(&x0, &x1, &x2, &x3);
+        let y = FieldElement51x4::new(&x3, &x2, &x1, &x0);
+
+        b.iter(|| &x * &y);
+    }
 }
