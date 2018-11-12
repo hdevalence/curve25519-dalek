@@ -3,8 +3,8 @@
 use traits::Identity;
 use scalar::Scalar;
 use edwards::EdwardsPoint;
-use backend::avx2::edwards::{ExtendedPoint, CachedPoint};
-use scalar_mul::window::LookupTable;
+use backend::vector::avx2::edwards::{ExtendedPoint, CachedPoint};
+use window::LookupTable;
 
 /// Perform constant-time, variable-base scalar multiplication.
 pub fn mul(point: &EdwardsPoint, scalar: &Scalar) -> EdwardsPoint {
