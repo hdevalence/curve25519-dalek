@@ -99,3 +99,8 @@ pub(crate) mod prelude;
 // Generic code for window lookups
 pub(crate) mod window;
 
+// Temporarily re-export for cargo asm
+#[cfg(any(
+    all(feature = "ifma_backend", target_feature = "avx512ifma"),
+))]
+pub use backend::vector::ifma;
