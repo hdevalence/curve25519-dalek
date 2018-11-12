@@ -24,3 +24,6 @@
 #[cfg(all(feature = "avx2_backend", target_feature = "avx2"))]
 pub mod avx2;
 
+#[cfg(all(feature = "ifma_backend", target_feature = "avx512ifma"))]
+pub mod ifma;
+
