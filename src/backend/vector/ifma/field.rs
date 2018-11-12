@@ -112,4 +112,38 @@ mod test {
         assert_eq!(z, u64x4::splat(5 + 2 * 3));
     }
 
+    #[test]
+    fn new_split_round_trip_on_reduced_input() {
+        // Invert a small field element to get a big one
+        let a = FieldElement51([2438, 24, 243, 0, 0]).invert();
+
+        let ax4 = FieldElement51x4::new(&a, &a, &a, &a);
+        let splits = ax4.split();
+
+        for i in 0..4 {
+            assert_eq!(a, splits[i]);
+        }
+    }
+
+    #[test]
+    fn new_split_round_trip_on_unreduced_input() {
+        // Invert a small field element to get a big one
+        let a = FieldElement51([2438, 24, 243, 0, 0]).invert();
+        // ... but now multiply it by 16 without reducing coeffs
+        let a16 = FieldElement51([
+            a.0[0] << 4,
+            a.0[1] << 4,
+            a.0[2] << 4,
+            a.0[3] << 4,
+            a.0[4] << 4,
+        ]);
+
+        let a16x4 = FieldElement51x4::new(&a16, &a16, &a16, &a16);
+        let splits = a16x4.split();
+
+        for i in 0..4 {
+            assert_eq!(a16, splits[i]);
+        }
+    }
+
 }
