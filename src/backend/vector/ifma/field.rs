@@ -206,7 +206,6 @@ impl<'a, 'b> Mul<&'b FieldElement51x4> for &'a FieldElement51x4 {
 
             // Accumulators for hi-sourced terms
             // Need to be doubled before adding
-            let mut z0hi = u64x4::splat(0);
             let mut z1hi = u64x4::splat(0);
             let mut z2hi = u64x4::splat(0);
             let mut z3hi = u64x4::splat(0);
@@ -315,7 +314,7 @@ impl<'a, 'b> Mul<&'b FieldElement51x4> for &'a FieldElement51x4 {
             z0lo = madd52lo(z0lo, r1938, z9 >> 52);
 
             FieldElement51x4([
-                z0lo + z0hi + z0hi,
+                z0lo,
                 z1lo + z1hi + z1hi,
                 z2lo + z2hi + z2hi,
                 z3lo + z3hi + z3hi,
