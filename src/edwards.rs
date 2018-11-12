@@ -575,7 +575,7 @@ impl<'a, 'b> Mul<&'b Scalar> for &'a EdwardsPoint {
         // If we built with AVX2, use the AVX2 backend.
         #[cfg(all(feature="avx2_backend", target_feature="avx2"))]
         {
-            use backend::vector::scalar_mul::variable_base::mul;
+            use backend::vector::avx2::scalar_mul::variable_base::mul;
             mul(self, scalar)
         }
         // Otherwise, use the serial backend:
@@ -636,7 +636,7 @@ impl MultiscalarMul for EdwardsPoint {
 
         // If we built with AVX2, use the AVX2 backend.
         #[cfg(all(feature="avx2_backend", target_feature="avx2"))]
-        use backend::vector::scalar_mul::straus::Straus;
+        use backend::vector::avx2::scalar_mul::straus::Straus;
         // Otherwise, proceed as normal:
         #[cfg(not(all(feature="avx2_backend", target_feature="avx2")))]
         use backend::serial::scalar_mul::straus::Straus;
@@ -674,7 +674,7 @@ impl VartimeMultiscalarMul for EdwardsPoint {
 
         // If we built with AVX2, use the AVX2 backend.
         #[cfg(all(feature="avx2_backend", target_feature="avx2"))]
-        use backend::vector::scalar_mul::straus::Straus;
+        use backend::vector::avx2::scalar_mul::straus::Straus;
         // Otherwise, proceed as normal:
         #[cfg(not(all(feature="avx2_backend", target_feature="avx2")))]
         use backend::serial::scalar_mul::straus::Straus;
@@ -689,7 +689,7 @@ impl EdwardsPoint {
     pub fn vartime_double_scalar_mul_basepoint(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> EdwardsPoint {
         // If we built with AVX2, use the AVX2 backend.
         #[cfg(all(feature="avx2_backend", target_feature="avx2"))]
-        use backend::vector::scalar_mul::vartime_double_base;
+        use backend::vector::avx2::scalar_mul::vartime_double_base;
         // Otherwise, use the serial backend:
         #[cfg(not(all(feature="avx2_backend", target_feature="avx2")))]
         use backend::serial::scalar_mul::vartime_double_base;
