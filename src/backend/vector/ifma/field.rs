@@ -137,7 +137,12 @@ impl<'a> Mul<(u32, u32, u32, u32)> for &'a FieldElement51x4 {
     fn mul(self, scalars: (u32, u32, u32, u32)) -> FieldElement51x4 {
         unsafe {
             let x = &self.0;
-            let y = u64x4::new(scalars.0 as u64, scalars.1 as u64, scalars.2 as u64, scalars.3 as u64);
+            let y = u64x4::new(
+                scalars.0 as u64,
+                scalars.1 as u64,
+                scalars.2 as u64,
+                scalars.3 as u64,
+            );
             let mask = u64x4::splat((1 << 51) - 1);
             let r19 = u64x4::splat(19);
 
@@ -442,8 +447,8 @@ mod test {
         }
     }
 
-    use test::Bencher;
     use test::black_box;
+    use test::Bencher;
 
     #[bench]
     fn bench_mul(b: &mut Bencher) {
