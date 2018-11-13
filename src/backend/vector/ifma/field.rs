@@ -460,7 +460,7 @@ mod test {
         let x = FieldElement51x4::new(&x0, &x1, &x2, &x3);
         let y = FieldElement51x4::new(&x3, &x2, &x1, &x0);
 
-        b.iter(|| &x * &y);
+        b.iter(|| black_box(&x * &y));
     }
 
     #[bench]
