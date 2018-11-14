@@ -305,7 +305,7 @@ impl<'a, 'b> Mul<&'b F51x4Reduced> for &'a F51x4Reduced {
 
             // Wave 6
             t0 = madd52hi(t0, r19, z9);
-            t1 = madd52lo(t0, r19, z9 >> 52);
+            t1 = madd52lo(t1, r19, z9 >> 52);
             z3lo = madd52lo(z3lo, x[0], y[3]);
             z4hi = madd52hi(z4hi, x[0], y[3]);
             z1hi = madd52lo(z1hi, r19, z5 >> 52);
