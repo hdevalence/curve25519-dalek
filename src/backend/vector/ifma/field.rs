@@ -400,7 +400,7 @@ mod test {
 
         let abigx4: F51x4Reduced = F51x4Unreduced::new(&abig, &abig, &abig, &abig).into();
 
-        let splits = abigx4.split();
+        let splits = F51x4Unreduced::from(abigx4).split();
         let c = &a * &FieldElement51([128, 0, 0, 0, 0]);
 
         for i in 0..4 {
