@@ -515,7 +515,7 @@ mod test {
 
         let x = F51x4Unreduced::new(&x0, &x1, &x2, &x3);
 
-        let y = x.shuffle(Shuffle:AAAA);
+        let y = x.shuffle(Shuffle::AAAA);
         let splits = y.split();
 
         assert_eq!(splits[0], x0);
