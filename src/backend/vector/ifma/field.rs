@@ -550,10 +550,10 @@ mod test {
         let x2 = FieldElement51::from_bytes(&[0x12; 32]);
         let x3 = FieldElement51::from_bytes(&[0x13; 32]);
 
-        let x1 = F51x4Unreduced::new(&x0, &x1, &x2, &x3);
-        let x2 = F51x4Unreduced::new(&x3, &x2, &x1, &x0);
+        let x = F51x4Unreduced::new(&x0, &x1, &x2, &x3);
+        let z = F51x4Unreduced::new(&x3, &x2, &x1, &x0);
 
-        let y = x1.blend(&x2, Lanes::AB);
+        let y = x.blend(&z, Lanes::AB);
         let splits = y.split();
 
         assert_eq!(splits[0], x3);
