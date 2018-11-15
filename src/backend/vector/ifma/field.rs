@@ -36,6 +36,28 @@ pub enum Shuffle {
     AAAA,
 }
 
+#[inline(always)]
+fn shuffle_lanes(x: u64x4, control: Shuffle) -> u64x4 {
+    unsafe {
+        use core::arch::x86_64::_mm256_permute4x64_epi64 as perm;
+
+        match control {
+            Shuffle::AAAA => perm(x.into_bits(), 0b00_00_00_00).into_bits(),
+        }
+    }
+}
+
+#[inline]
+fn blend_lanes(x: u64x4, y: u64x4, control: Lanes) -> u64x4 {
+    unsafe {
+        use core::arch::x86_64::_mm256_blend_epi32 as blend;
+
+        match control {
+            Lanes::AB => blend(x.into_bits(), y.into_bits(), 0b00_00_11_11).into_bits(),
+        }
+    }
+}
+
 impl F51x4Unreduced {
     pub fn new(
         x0: &FieldElement51,
@@ -88,14 +110,6 @@ impl F51x4Unreduced {
 
     #[inline]
     pub fn shuffle(&self, control: Shuffle) -> F51x4Unreduced {
-        let shuffle_lanes = |x: u64x4, control: Shuffle| unsafe {
-            use core::arch::x86_64::_mm256_permute4x64_epi64 as perm;
-
-            match control {
-                Shuffle::AAAA => u64x4::from_bits(perm(x.into_bits(), 0b00_00_00_00)),
-            }
-        };
-
         F51x4Unreduced([
             shuffle_lanes(self.0[0], control),
             shuffle_lanes(self.0[1], control),
@@ -107,15 +121,31 @@ impl F51x4Unreduced {
 
     #[inline]
     pub fn blend(&self, other: &F51x4Unreduced, control: Lanes) -> F51x4Unreduced {
-        let blend_lanes = |x: u64x4, y: u64x4, control: Lanes| unsafe {
-            use core::arch::x86_64::_mm256_blend_epi32 as blend;
-
-            match control {
-                Lanes::AB => u64x4::from_bits(blend(x.into_bits(), y.into_bits(), 0b00_00_11_11)),
-            }
-        };
-
         F51x4Unreduced([
+            blend_lanes(self.0[0], other.0[0], control),
+            blend_lanes(self.0[1], other.0[1], control),
+            blend_lanes(self.0[2], other.0[2], control),
+            blend_lanes(self.0[3], other.0[3], control),
+            blend_lanes(self.0[4], other.0[4], control),
+        ])
+    }
+}
+
+impl F51x4Reduced {
+    #[inline]
+    pub fn shuffle(&self, control: Shuffle) -> F51x4Reduced {
+        F51x4Reduced([
+            shuffle_lanes(self.0[0], control),
+            shuffle_lanes(self.0[1], control),
+            shuffle_lanes(self.0[2], control),
+            shuffle_lanes(self.0[3], control),
+            shuffle_lanes(self.0[4], control),
+        ])
+    }
+
+    #[inline]
+    pub fn blend(&self, other: &F51x4Reduced, control: Lanes) -> F51x4Reduced {
+        F51x4Reduced([
             blend_lanes(self.0[0], other.0[0], control),
             blend_lanes(self.0[1], other.0[1], control),
             blend_lanes(self.0[2], other.0[2], control),
