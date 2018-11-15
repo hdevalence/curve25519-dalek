@@ -8,7 +8,7 @@
 // - Henry de Valence <hdevalence@hdevalence.ca>
 
 use core::ops::{Add, Mul, Neg};
-use packed_simd::{i32x8, u32x8, u64x4, IntoBits};
+use packed_simd::{u64x4, FromBits, IntoBits};
 
 use backend::serial::u64::field::FieldElement51;
 
@@ -25,6 +25,16 @@ pub struct F51x4Unreduced([u64x4; 5]);
 
 #[derive(Copy, Clone)]
 pub struct F51x4Reduced([u64x4; 5]);
+
+#[derive(Copy, Clone)]
+pub enum Lanes {
+    AB,
+}
+
+#[derive(Copy, Clone)]
+pub enum Shuffle {
+    AAAA,
+}
 
 impl F51x4Unreduced {
     pub fn new(
@@ -74,6 +84,25 @@ impl F51x4Unreduced {
                 x[4].extract(3),
             ]),
         ]
+    }
+
+    #[inline]
+    pub fn shuffle(&self, control: Shuffle) -> F51x4Unreduced {
+        let shuffle_lanes = |x: u64x4, control: Shuffle| unsafe {
+            use core::arch::x86_64::_mm256_permute4x64_epi64 as perm;
+
+            match control {
+                Shuffle::AAAA => u64x4::from_bits(perm(x.into_bits(), 0b00_00_00_00)),
+            }
+        };
+
+        F51x4Unreduced([
+            shuffle_lanes(self.0[0], control),
+            shuffle_lanes(self.0[1], control),
+            shuffle_lanes(self.0[2], control),
+            shuffle_lanes(self.0[3], control),
+            shuffle_lanes(self.0[4], control),
+        ])
     }
 }
 
@@ -302,7 +331,6 @@ impl<'a, 'b> Mul<&'b F51x4Reduced> for &'a F51x4Reduced {
             let mut t0 = u64x4::splat(0);
             let mut t1 = u64x4::splat(0);
 
-
             // Wave 6
             t0 = madd52hi(t0, r19, z9);
             t1 = madd52lo(t1, r19, z9 >> 52);
@@ -476,6 +504,24 @@ mod test {
         for i in 0..4 {
             assert_eq!(c, splits[i]);
         }
+    }
+
+    #[test]
+    fn shuffle_AAAA() {
+        let x0 = FieldElement51::from_bytes(&[0x10; 32]);
+        let x1 = FieldElement51::from_bytes(&[0x11; 32]);
+        let x2 = FieldElement51::from_bytes(&[0x12; 32]);
+        let x3 = FieldElement51::from_bytes(&[0x13; 32]);
+
+        let x = F51x4Unreduced::new(&x0, &x1, &x2, &x3);
+
+        let y = x.shuffle(Shuffle:AAAA);
+        let splits = y.split();
+
+        assert_eq!(splits[0], x0);
+        assert_eq!(splits[1], x0);
+        assert_eq!(splits[2], x0);
+        assert_eq!(splits[3], x0);
     }
 
     use test::black_box;
