@@ -104,6 +104,25 @@ impl F51x4Unreduced {
             shuffle_lanes(self.0[4], control),
         ])
     }
+
+    #[inline]
+    pub fn blend(&self, other: &F51x4Unreduced, control: Lanes) -> F51x4Unreduced {
+        let blend_lanes = |x: u64x4, y: u64x4, control: Lanes| unsafe {
+            use core::arch::x86_64::_mm256_blend_epi32 as blend;
+
+            match control {
+                Lanes::AB => u64x4::from_bits(blend(x.into_bits(), y.into_bits(), 0b00_00_11_11)),
+            }
+        };
+
+        F51x4Unreduced([
+            blend_lanes(self.0[0], other.0[0], control),
+            blend_lanes(self.0[1], other.0[1], control),
+            blend_lanes(self.0[2], other.0[2], control),
+            blend_lanes(self.0[3], other.0[3], control),
+            blend_lanes(self.0[4], other.0[4], control),
+        ])
+    }
 }
 
 impl From<F51x4Reduced> for F51x4Unreduced {
@@ -522,5 +541,24 @@ mod test {
         assert_eq!(splits[1], x0);
         assert_eq!(splits[2], x0);
         assert_eq!(splits[3], x0);
+    }
+
+    #[test]
+    fn blend_AB() {
+        let x0 = FieldElement51::from_bytes(&[0x10; 32]);
+        let x1 = FieldElement51::from_bytes(&[0x11; 32]);
+        let x2 = FieldElement51::from_bytes(&[0x12; 32]);
+        let x3 = FieldElement51::from_bytes(&[0x13; 32]);
+
+        let x = F51x4Unreduced::new(&x0, &x1, &x2, &x3);
+        let z = F51x4Unreduced::new(&x3, &x2, &x1, &x0);
+
+        let y = x.blend(&z, Lanes::AB);
+        let splits = y.split();
+
+        assert_eq!(splits[0], x3);
+        assert_eq!(splits[1], x2);
+        assert_eq!(splits[2], x2);
+        assert_eq!(splits[3], x3);
     }
 }
