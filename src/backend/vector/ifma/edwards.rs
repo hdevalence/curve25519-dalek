@@ -7,6 +7,8 @@
 // Authors:
 // - Henry de Valence <hdevalence@hdevalence.ca>
 
+use traits::Identity;
+
 use std::ops::Add;
 
 use edwards;
