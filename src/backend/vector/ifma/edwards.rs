@@ -82,10 +82,9 @@ impl<'a, 'b> Add<&'b CachedPoint> for &'a ExtendedPoint {
 mod test {
     use super::*;
 
-    #[test]
     fn addition_test_helper(P: edwards::EdwardsPoint, Q: edwards::EdwardsPoint) {
         // Test the serial implementation of the parallel addition formulas
-        let R_serial: edwards::EdwardsPoint = serial_add(P.into(), Q.into()).into();
+        //let R_serial: edwards::EdwardsPoint = serial_add(P.into(), Q.into()).into();
 
         // Test the vector implementation of the parallel readdition formulas
         let cached_Q = CachedPoint::from(ExtendedPoint::from(Q));
@@ -97,13 +96,39 @@ mod test {
         println!("Q = {:?}", Q);
         println!("cached Q = {:?}", cached_Q);
         println!("R = P + Q = {:?}", &P + &Q);
-        println!("R_serial = {:?}", R_serial);
+        //println!("R_serial = {:?}", R_serial);
         println!("R_vector = {:?}", R_vector);
         //println!("S = P - Q = {:?}", &P - &Q);
         //println!("S_vector = {:?}", S_vector);
-        assert_eq!(R_serial.compress(), (&P + &Q).compress());
+        //assert_eq!(R_serial.compress(), (&P + &Q).compress());
         assert_eq!(R_vector.compress(), (&P + &Q).compress());
         //assert_eq!(S_vector.compress(), (&P - &Q).compress());
         println!("OK!\n");
+    }
+
+    #[test]
+    fn vector_addition_vs_serial_addition_vs_edwards_extendedpoint() {
+        use constants;
+        use scalar::Scalar;
+
+        println!("Testing id +- id");
+        let P = edwards::EdwardsPoint::identity();
+        let Q = edwards::EdwardsPoint::identity();
+        addition_test_helper(P, Q);
+
+        println!("Testing id +- B");
+        let P = edwards::EdwardsPoint::identity();
+        let Q = constants::ED25519_BASEPOINT_POINT;
+        addition_test_helper(P, Q);
+
+        println!("Testing B +- B");
+        let P = constants::ED25519_BASEPOINT_POINT;
+        let Q = constants::ED25519_BASEPOINT_POINT;
+        addition_test_helper(P, Q);
+
+        println!("Testing B +- kB");
+        let P = constants::ED25519_BASEPOINT_POINT;
+        let Q = &constants::ED25519_BASEPOINT_TABLE * &Scalar::from(8475983829u64);
+        addition_test_helper(P, Q);
     }
 }
