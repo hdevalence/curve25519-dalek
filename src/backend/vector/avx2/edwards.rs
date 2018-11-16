@@ -521,4 +521,19 @@ mod test {
         let P = &constants::ED25519_BASEPOINT_TABLE * &Scalar::from(8475983829u64);
         doubling_test_helper(P);
     }
+
+    use test::Bencher;
+
+    #[bench]
+    fn bench_edwards_add(b: &mut Bencher) {
+        use constants;
+        use scalar::Scalar;
+        let P_ed = constants::ED25519_BASEPOINT_POINT;
+        let Q_ed = &constants::ED25519_BASEPOINT_TABLE * &Scalar::from(8475983829u64);
+
+        let P = ExtendedPoint::from(P_ed);
+        let Q = CachedPoint::from(ExtendedPoint::from(Q_ed));
+
+        b.iter(|| &P + &Q);
+    }
 }
