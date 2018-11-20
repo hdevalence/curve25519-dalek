@@ -329,7 +329,7 @@ impl F51x4Reduced {
             z2_2 = madd52lo(z2_2, r19, z6_1 >> 52);
             z1_2 = madd52lo(z1_2, r19, z5_1 >> 52);
             
-            z0_2 = madd52hi(z0_2, r19, t0 + t1);
+            z0_2 = madd52lo(z0_2, r19, t0 + t1);
             z1_2 = madd52hi(z1_2, r19, z5_1);
             z2_2 = madd52hi(z2_2, r19, z6_1);
             z3_2 = madd52hi(z3_2, r19, z7_1);
