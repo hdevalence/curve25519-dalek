@@ -798,33 +798,20 @@ mod test {
     #[test]
     fn iterated_square_matches_serial() {
         // Invert a small field element to get a big one
-        let a = FieldElement51([2438, 24, 243, 0, 0]).invert();
-        let mut c = &a * &a;
+        let mut a = FieldElement51([2438, 24, 243, 0, 0]).invert();
         for i in 0..1024 {
-            c = &c * &c;
+            a = a.square();
         }
 
-        let ax4: F51x4Reduced = F51x4Unreduced::new(&a, &a, &a, &a).into();
-        println!(
-            "{:?}",
-            [
-                ax4.0[0].extract(0),
-                ax4.0[1].extract(0),
-                ax4.0[2].extract(0),
-                ax4.0[3].extract(0),
-                ax4.0[4].extract(0),
-            ]
-        );
-        let mut cx4 = &ax4 * &ax4;
+        let mut ax4 = F51x4Unreduced::new(&a, &a, &a, &a);
         for i in 0..1024 {
-            let cx4_red = F51x4Reduced::from(cx4);
-            cx4 = cx4_red.square();
+            ax4 = F51x4Reduced::from(ax4).square();
         }
 
-        let splits = cx4.split();
+        let splits = ax4.split();
 
         for i in 0..4 {
-            assert_eq!(c, splits[i]);
+            assert_eq!(a, splits[i]);
         }
     }
 
