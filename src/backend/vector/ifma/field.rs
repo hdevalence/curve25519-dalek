@@ -595,6 +595,32 @@ impl<'a, 'b> Mul<&'b F51x4Reduced> for &'a F51x4Reduced {
             t1 = madd52lo(t1, r19, z9 >> 52);
             z3lo = madd52lo(z3lo, x[0], y[3]);
             z4hi = madd52hi(z4hi, x[0], y[3]);
+
+
+            {
+                let z0_1 = z0lo + z0hi + z0hi;
+                let z1_1 = z1lo + z1hi + z1hi;
+                let z2_1 = z2lo + z2hi + z2hi;
+                let z3_1 = z3lo + z3hi + z3hi;
+                let z4_1 = z4lo + z4hi + z4hi;
+
+                println!(
+                    "{:?}",
+                    [
+                        z0_1.extract(0),
+                        z1_1.extract(0),
+                        z2_1.extract(0),
+                        z3_1.extract(0),
+                        z4_1.extract(0),
+                        z5.extract(0),
+                        z6.extract(0),
+                        z7.extract(0),
+                        z8.extract(0),
+                        z9.extract(0),
+                    ]
+                );
+            }
+
             z1hi = madd52lo(z1hi, r19, z5 >> 52);
             z2hi = madd52lo(z2hi, r19, z6 >> 52);
             z3hi = madd52lo(z3hi, r19, z7 >> 52);
@@ -738,6 +764,33 @@ mod test {
 
         for i in 0..4 {
             assert_eq!(c, splits[i]);
+        }
+    }
+
+    #[test]
+    fn square_matches_mul() {
+        // Invert a small field element to get a big one
+        let a = FieldElement51([2438, 24, 243, 0, 0]).invert();
+
+        let ax4: F51x4Reduced = F51x4Unreduced::new(&a, &a, &a, &a).into();
+        println!(
+            "{:?}",
+            [
+                ax4.0[0].extract(0),
+                ax4.0[1].extract(0),
+                ax4.0[2].extract(0),
+                ax4.0[3].extract(0),
+                ax4.0[4].extract(0),
+            ]
+        );
+        let mut cx4 = &ax4 * &ax4;
+        let mut cx4_sq = ax4.square();
+
+        let splits = cx4.split();
+        let splits_sq = cx4.split();
+
+        for i in 0..4 {
+            assert_eq!(splits_sq[i], splits[i]);
         }
     }
 
