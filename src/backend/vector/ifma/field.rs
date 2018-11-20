@@ -788,7 +788,7 @@ mod test {
         let mut cx4_sq = ax4.square();
 
         let splits = cx4.split();
-        let splits_sq = cx4.split();
+        let splits_sq = cx4_sq.split();
 
         for i in 0..4 {
             assert_eq!(splits_sq[i], splits[i]);
