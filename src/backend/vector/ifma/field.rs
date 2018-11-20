@@ -288,31 +288,56 @@ impl F51x4Reduced {
             z7_1 += z7_2 << 1;
             z8_1 += z8_2 << 1;
             z9_1 += z9_2 << 1;
-            
-            let mut z9_19_hi = u64x4::splat(0);
-            let mut z9_hi_19 = u64x4::splat(0);
+
+            {
+                z0_1 += z0_2 << 1;
+                z1_1 += z1_2 << 1;
+                z2_1 += z2_2 << 1;
+                z3_1 += z3_2 << 1;
+                z4_1 += z4_2 << 1;
+
+                println!(
+                    "{:?}",
+                    [
+                        z0_1.extract(0),
+                        z1_1.extract(0),
+                        z2_1.extract(0),
+                        z3_1.extract(0),
+                        z4_1.extract(0),
+                        z5_1.extract(0),
+                        z6_1.extract(0),
+                        z7_1.extract(0),
+                        z8_1.extract(0),
+                        z9_1.extract(0),
+                    ]
+                );
+            }
+
+            /*
+            let mut t0 = u64x4::splat(0);
+            let mut t1 = u64x4::splat(0);
             let r19 = u64x4::splat(19);
-
-            z9_19_hi = madd52hi(z9_19_hi, r19, z9_1);
-            z9_hi_19 = madd52lo(z9_hi_19, r19, z9_1 >> 52);
-
+            
+            t0 = madd52hi(t0, r19, z9_1);
+            t1 = madd52lo(t1, r19, z9_1 >> 52);
+            
             z4_2 = madd52lo(z4_2, r19, z8_1 >> 52);
             z3_2 = madd52lo(z3_2, r19, z7_1 >> 52);
             z2_2 = madd52lo(z2_2, r19, z6_1 >> 52);
             z1_2 = madd52lo(z1_2, r19, z5_1 >> 52);
-
-            z0_2 = madd52hi(z0_2, r19, z9_19_hi + z9_hi_19);
+            
+            z0_2 = madd52hi(z0_2, r19, t0 + t1);
             z1_2 = madd52hi(z1_2, r19, z5_1);
             z2_2 = madd52hi(z2_2, r19, z6_1);
             z3_2 = madd52hi(z3_2, r19, z7_1);
             z4_2 = madd52hi(z4_2, r19, z8_1);
-
+            
             z0_1 = madd52lo(z0_1, r19, z5_1);
             z1_1 = madd52lo(z1_1, r19, z6_1);
             z2_1 = madd52lo(z2_1, r19, z7_1);
             z3_1 = madd52lo(z3_1, r19, z8_1);
             z4_1 = madd52lo(z4_1, r19, z9_1);
-
+            
             F51x4Unreduced([
                 z0_1 + z0_2 + z0_2,
                 z1_1 + z1_2 + z1_2,
@@ -320,6 +345,8 @@ impl F51x4Reduced {
                 z3_1 + z3_2 + z3_2,
                 z4_1 + z4_2 + z4_2,
             ])
+            */
+            unimplemented!();
         }
     }
 }
@@ -724,6 +751,16 @@ mod test {
         }
 
         let ax4: F51x4Reduced = F51x4Unreduced::new(&a, &a, &a, &a).into();
+        println!(
+            "{:?}",
+            [
+                ax4.0[0].extract(0),
+                ax4.0[1].extract(0),
+                ax4.0[2].extract(0),
+                ax4.0[3].extract(0),
+                ax4.0[4].extract(0),
+            ]
+        );
         let mut cx4 = &ax4 * &ax4;
         for i in 0..1024 {
             let cx4_red = F51x4Reduced::from(cx4);
