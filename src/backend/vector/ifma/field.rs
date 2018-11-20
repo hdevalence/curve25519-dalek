@@ -270,7 +270,9 @@ impl F51x4Reduced {
             let mut z2_1 = z2_4 << 2;
             let mut z3_1 = z3_4 << 2;
             let z5_1 = (z5_4 + z5_4 + z5_2) << 2;
+            z6_1 += z6_2 << 1;
             let z7_1 = (z7_4 + z7_4 + z7_2) << 2;
+            z8_1 += z8_2 << 1;
             let z9_1 = z9_2 << 2;
 
             let mut z9_19_hi = u64x4::splat(0);
