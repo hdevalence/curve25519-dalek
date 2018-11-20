@@ -195,9 +195,9 @@ impl F51x4Reduced {
             let x = &self.0;
 
             // Represent values with coeff. 1
-            /*
             let mut z0_1 = u64x4::splat(0);
             let mut z1_1 = u64x4::splat(0);
+            /*
             let mut z2_1 = u64x4::splat(0);
             let mut z3_1 = u64x4::splat(0);
             let mut z4_1 = u64x4::splat(0);
