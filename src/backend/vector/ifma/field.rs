@@ -789,6 +789,26 @@ mod test {
         );
         let mut cx4 = &ax4 * &ax4;
         let mut cx4_sq = ax4.square();
+        println!(
+            "cx4 {:?}",
+            [
+                cx4.0[0].extract(0),
+                cx4.0[1].extract(0),
+                cx4.0[2].extract(0),
+                cx4.0[3].extract(0),
+                cx4.0[4].extract(0),
+            ]
+        );
+        println!(
+            "cx4_sq {:?}",
+            [
+                cx4_sq.0[0].extract(0),
+                cx4_sq.0[1].extract(0),
+                cx4_sq.0[2].extract(0),
+                cx4_sq.0[3].extract(0),
+                cx4_sq.0[4].extract(0),
+            ]
+        );
 
         let splits = cx4.split();
         let splits_sq = cx4_sq.split();
