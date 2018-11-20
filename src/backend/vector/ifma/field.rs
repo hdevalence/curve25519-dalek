@@ -289,40 +289,12 @@ impl F51x4Reduced {
             z8_1 += z8_2 << 1;
             z9_1 += z9_2 << 1;
 
-            {
-                let z0 = z0_2 + (z0_2 << 1);
-                let z1 = z1_2 + (z1_2 << 1);
-                let z2 = z2_2 + (z2_2 << 1);
-                let z3 = z3_2 + (z3_2 << 1);
-                let z4 = z4_2 + (z4_2 << 1);
-
-                println!(
-                    "{:?}",
-                    [
-                        z0_1.extract(0),
-                        z1_1.extract(0),
-                        z2_1.extract(0),
-                        z3_1.extract(0),
-                        z4_1.extract(0),
-                        z5_1.extract(0),
-                        z6_1.extract(0),
-                        z7_1.extract(0),
-                        z8_1.extract(0),
-                        z9_1.extract(0),
-                    ]
-                );
-            }
-
             let mut t0 = u64x4::splat(0);
             let mut t1 = u64x4::splat(0);
             let r19 = u64x4::splat(19);
             
             t0 = madd52hi(t0, r19, z9_1);
             t1 = madd52lo(t1, r19, z9_1 >> 52);
-            {
-                println!("t0: {}", t0.extract(0));
-                println!("t1: {}", t1.extract(0));
-            }
             
             z4_2 = madd52lo(z4_2, r19, z8_1 >> 52);
             z3_2 = madd52lo(z3_2, r19, z7_1 >> 52);
@@ -595,40 +567,10 @@ impl<'a, 'b> Mul<&'b F51x4Reduced> for &'a F51x4Reduced {
             t1 = madd52lo(t1, r19, z9 >> 52);
             z3lo = madd52lo(z3lo, x[0], y[3]);
             z4hi = madd52hi(z4hi, x[0], y[3]);
-
-            {
-                let z0_1 = z0lo + z0hi + z0hi;
-                let z1_1 = z1lo + z1hi + z1hi;
-                let z2_1 = z2lo + z2hi + z2hi;
-                let z3_1 = z3lo + z3hi + z3hi;
-                let z4_1 = z4lo + z4hi + z4hi;
-
-                println!(
-                    "{:?}",
-                    [
-                        z0_1.extract(0),
-                        z1_1.extract(0),
-                        z2_1.extract(0),
-                        z3_1.extract(0),
-                        z4_1.extract(0),
-                        z5.extract(0),
-                        z6.extract(0),
-                        z7.extract(0),
-                        z8.extract(0),
-                        z9.extract(0),
-                    ]
-                );
-            }
-
             z1hi = madd52lo(z1hi, r19, z5 >> 52);
             z2hi = madd52lo(z2hi, r19, z6 >> 52);
             z3hi = madd52lo(z3hi, r19, z7 >> 52);
             z0lo = madd52lo(z0lo, r19, z5);
-
-            {
-                println!("t0: {}", t0.extract(0));
-                println!("t1: {}", t1.extract(0));
-            }
 
             // Wave 7
             z4lo = madd52lo(z4lo, r19, z9);
@@ -777,38 +719,8 @@ mod test {
         let a = FieldElement51([2438, 24, 243, 0, 0]).invert();
 
         let ax4: F51x4Reduced = F51x4Unreduced::new(&a, &a, &a, &a).into();
-        println!(
-            "{:?}",
-            [
-                ax4.0[0].extract(0),
-                ax4.0[1].extract(0),
-                ax4.0[2].extract(0),
-                ax4.0[3].extract(0),
-                ax4.0[4].extract(0),
-            ]
-        );
         let mut cx4 = &ax4 * &ax4;
         let mut cx4_sq = ax4.square();
-        println!(
-            "cx4 {:?}",
-            [
-                cx4.0[0].extract(0),
-                cx4.0[1].extract(0),
-                cx4.0[2].extract(0),
-                cx4.0[3].extract(0),
-                cx4.0[4].extract(0),
-            ]
-        );
-        println!(
-            "cx4 {:?}",
-            [
-                cx4_sq.0[0].extract(0),
-                cx4_sq.0[1].extract(0),
-                cx4_sq.0[2].extract(0),
-                cx4_sq.0[3].extract(0),
-                cx4_sq.0[4].extract(0),
-            ]
-        );
 
         let splits = cx4.split();
         let splits_sq = cx4_sq.split();
