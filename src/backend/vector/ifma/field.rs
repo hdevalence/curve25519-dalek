@@ -188,6 +188,133 @@ impl F51x4Reduced {
             blend_lanes(self.0[4], other.0[4], control),
         ])
     }
+
+    #[inline]
+    pub fn square(&self) -> F51x4Unreduced {
+        unsafe {
+            let x = &self.0;
+
+            // Represent values with coeff. 1
+            /*
+            let mut z0_1 = u64x4::splat(0);
+            let mut z1_1 = u64x4::splat(0);
+            let mut z2_1 = u64x4::splat(0);
+            let mut z3_1 = u64x4::splat(0);
+            let mut z4_1 = u64x4::splat(0);
+            let mut z5_1 = u64x4::splat(0);
+            let mut z6_1 = u64x4::splat(0);
+            let mut z7_1 = u64x4::splat(0);
+            let mut z8_1 = u64x4::splat(0);
+            let mut z9_1 = u64x4::splat(0);
+            */
+
+            // Represent values with coeff. 2
+            let mut z0_2 = u64x4::splat(0);
+            let mut z1_2 = u64x4::splat(0);
+            let mut z2_2 = u64x4::splat(0);
+            let mut z3_2 = u64x4::splat(0);
+            let mut z4_2 = u64x4::splat(0);
+            let mut z5_2 = u64x4::splat(0);
+            let mut z6_2 = u64x4::splat(0);
+            let mut z7_2 = u64x4::splat(0);
+            let mut z8_2 = u64x4::splat(0);
+            let mut z9_2 = u64x4::splat(0);
+
+            // Represent values with coeff. 4
+            let mut z0_4 = u64x4::splat(0);
+            let mut z1_4 = u64x4::splat(0);
+            let mut z2_4 = u64x4::splat(0);
+            let mut z3_4 = u64x4::splat(0);
+            let mut z4_4 = u64x4::splat(0);
+            let mut z5_4 = u64x4::splat(0);
+            let mut z6_4 = u64x4::splat(0);
+            let mut z7_4 = u64x4::splat(0);
+            let mut z8_4 = u64x4::splat(0);
+            let mut z9_4 = u64x4::splat(0);
+
+            // Wave 0
+            z5_4 = madd52hi(z5_4, x[1], x[3]);
+            z6_4 = madd52hi(z6_4, x[2], x[3]);
+            z4_4 = madd52hi(z4_4, x[1], x[2]);
+            z8_4 = madd52hi(z8_4, x[2], x[3]);
+            z5_2 = madd52lo(z5_2, x[2], x[3]);
+            z6_2 = madd52lo(z6_2, x[2], x[4]);
+            z7_2 = madd52hi(z7_2, x[3], x[3]);
+            z3_2 = madd52hi(z3_2, x[1], x[1]);
+
+            let mut z8_1 = z8_4 << 2;
+
+            // Wave 1
+            z7_4 = madd52hi(z7_4, x[2], x[4]);
+            z5_4 = madd52hi(z5_4, x[0], x[4]);
+            z6_4 = madd52hi(z6_4, x[1], x[4]);
+            z4_4 = madd52hi(z4_4, x[0], x[3]);
+            z5_2 = madd52lo(z5_2, x[1], x[4]);
+            z4_2 = madd52lo(z4_2, x[1], x[3]);
+            z3_2 = madd52lo(z3_2, x[1], x[2]);
+            z9_2 = madd52hi(z9_2, x[4], x[4]);
+
+            let mut z6_1 = z6_4 << 2;
+            let mut z4_1 = z4_4 << 2;
+
+            // Wave 2
+            z1_2 = madd52hi(z1_2, x[0], x[0]);
+            z8_1 = madd52lo(z8_1, x[4], x[4]);
+            z3_4 = madd52hi(z3_4, x[0], x[2]);
+            z2_4 = madd52hi(z2_4, x[0], x[1]);
+            z7_2 = madd52lo(z7_2, x[3], x[4]);
+            z6_1 = madd52lo(z6_1, x[3], x[3]);
+            z5_2 = madd52hi(z5_2, x[2], x[2]);
+            z4_2 = madd52lo(z4_2, x[0], x[4]);
+
+            let mut z2_1 = z2_4 << 2;
+            let mut z3_1 = z3_4 << 2;
+            let z5_1 = (z5_4 + z5_4 + z5_2) << 2;
+            let z7_1 = (z7_4 + z7_4 + z7_2) << 2;
+            let z9_1 = z9_2 << 2;
+
+            let mut z9_19_hi = u64x4::splat(0);
+            let mut z9_hi_19 = u64x4::splat(0);
+            let r19 = u64x4::splat(19);
+
+            // Wave 3
+            z9_19_hi = madd52hi(z9_19_hi, r19, z9_1);
+            z9_hi_19 = madd52lo(z9_hi_19, r19, z9_1 >> 52);
+            z1_2 = madd52lo(z1_2, x[0], x[1]);
+            z3_2 = madd52lo(z3_2, x[0], x[3]);
+            z2_2 = madd52lo(z2_2, x[0], x[2]);
+            z4_1 = madd52lo(z4_1, x[2], x[2]);
+            z2_1 = madd52lo(z2_1, x[1], x[1]);
+            z0_1 = madd52lo(z0_1, x[0], x[0]);
+
+            // Wave 4
+            z4_2 = madd52hi(z4_2, r19, z8_1);
+            z3_2 = madd52hi(z3_2, r19, z7_1);
+            z2_2 = madd52hi(z2_2, r19, z6_1);
+            z1_2 = madd52hi(z1_2, r19, z5_1);
+            z0_2 = madd52hi(z0_2, r19, z9_19_hi + z9_hi_19);
+            z4_1 = madd52lo(z4_1, r19, z9_1);
+            z3_1 = madd52lo(z3_1, r19, z8_1);
+            z2_1 = madd52lo(z2_1, r19, z7_1);
+            z1_1 = madd52lo(z1_1, r19, z6_1);
+
+            // Wave 5
+            z0_1 = madd52lo(z0_1, r19, z5_1);
+            z4_2 = madd52lo(z4_2, r19, z9_1 >> 52);
+            z3_2 = madd52lo(z3_2, r19, z8_1 >> 52);
+            z2_2 = madd52lo(z2_2, r19, z7_1 >> 52);
+            z1_2 = madd52lo(z1_2, r19, z6_1 >> 52);
+            z0_2 = madd52lo(z0_2, r19, z5_1 >> 52);
+
+            F51x4Unreduced([
+                z0_1 + z0_2 + z0_2,
+                z1_1 + z1_2 + z1_2,
+                z2_1 + z2_2 + z2_2,
+                z3_1 + z3_2 + z3_2,
+                z4_1 + z4_2 + z4_2,
+            ])
+        }
+    }
 }
 
 impl From<F51x4Reduced> for F51x4Unreduced {
@@ -571,6 +698,29 @@ mod test {
         for i in 0..1024 {
             cx4 = &ax4 * &F51x4Reduced::from(cx4);
             cx4 = &bx4 * &F51x4Reduced::from(cx4);
+        }
+
+        let splits = cx4.split();
+
+        for i in 0..4 {
+            assert_eq!(c, splits[i]);
+        }
+    }
+
+    #[test]
+    fn iterated_square_matches_serial() {
+        // Invert a small field element to get a big one
+        let a = FieldElement51([2438, 24, 243, 0, 0]).invert();
+        let mut c = &a * &a;
+        for i in 0..1024 {
+            c = &c * &c;
+        }
+
+        let ax4: F51x4Reduced = F51x4Unreduced::new(&a, &a, &a, &a).into();
+        let mut cx4 = &ax4 * &ax4;
+        for i in 0..1024 {
+            let cx4_red = F51x4Reduced::from(cx4);
+            cx4 = cx4_red.square();
         }
 
         let splits = cx4.split();
