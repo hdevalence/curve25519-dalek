@@ -751,6 +751,16 @@ mod test {
         }
 
         let ax4: F51x4Reduced = F51x4Unreduced::new(&a, &a, &a, &a).into();
+        println!(
+            "{:?}",
+            [
+                ax4.0[0].extract(0),
+                ax4.0[1].extract(0),
+                ax4.0[2].extract(0),
+                ax4.0[3].extract(0),
+                ax4.0[4].extract(0),
+            ]
+        );
         let mut cx4 = &ax4 * &ax4;
         for i in 0..1024 {
             let cx4_red = F51x4Reduced::from(cx4);
