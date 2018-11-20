@@ -289,7 +289,6 @@ impl F51x4Reduced {
             z8_1 += z8_2 << 1;
             z9_1 += z9_2 << 1;
 
-            /*
             {
                 z0_1 += z0_2 << 1;
                 z1_1 += z1_2 << 1;
@@ -313,7 +312,6 @@ impl F51x4Reduced {
                     ]
                 );
             }
-            */
 
             let mut t0 = u64x4::splat(0);
             let mut t1 = u64x4::splat(0);
@@ -321,6 +319,10 @@ impl F51x4Reduced {
             
             t0 = madd52hi(t0, r19, z9_1);
             t1 = madd52lo(t1, r19, z9_1 >> 52);
+            {
+                println!("t0: {}", t0.extract(0));
+                println!("t1: {}", t1.extract(0));
+            }
             
             z4_2 = madd52lo(z4_2, r19, z8_1 >> 52);
             z3_2 = madd52lo(z3_2, r19, z7_1 >> 52);
@@ -584,10 +586,9 @@ impl<'a, 'b> Mul<&'b F51x4Reduced> for &'a F51x4Reduced {
             z2hi = madd52hi(z2hi, x[0], y[1]);
             z3hi = madd52hi(z3hi, x[0], y[2]);
 
-            let r19 = u64x4::splat(19);
-
             let mut t0 = u64x4::splat(0);
             let mut t1 = u64x4::splat(0);
+            let r19 = u64x4::splat(19);
 
             // Wave 6
             t0 = madd52hi(t0, r19, z9);
@@ -595,8 +596,6 @@ impl<'a, 'b> Mul<&'b F51x4Reduced> for &'a F51x4Reduced {
             z3lo = madd52lo(z3lo, x[0], y[3]);
             z4hi = madd52hi(z4hi, x[0], y[3]);
 
-
-            /*
             {
                 let z0_1 = z0lo + z0hi + z0hi;
                 let z1_1 = z1lo + z1hi + z1hi;
@@ -620,12 +619,16 @@ impl<'a, 'b> Mul<&'b F51x4Reduced> for &'a F51x4Reduced {
                     ]
                 );
             }
-            */
 
             z1hi = madd52lo(z1hi, r19, z5 >> 52);
             z2hi = madd52lo(z2hi, r19, z6 >> 52);
             z3hi = madd52lo(z3hi, r19, z7 >> 52);
             z0lo = madd52lo(z0lo, r19, z5);
+
+            {
+                println!("t0: {}", t0.extract(0));
+                println!("t1: {}", t1.extract(0));
+            }
 
             // Wave 7
             z4lo = madd52lo(z4lo, r19, z9);
