@@ -276,7 +276,7 @@ impl F51x4Reduced {
             z7_2 = madd52lo(z7_2, x[3], x[4]);
             z7_2 = madd52hi(z7_2, x[3], x[3]);
 
-            z8_4 = madd52hi(z8_4, x[2], x[3]);
+            z8_4 = madd52hi(z8_4, x[3], x[4]);
             let mut z8_1 = z8_4 << 2;
             z8_1 = madd52lo(z8_1, x[4], x[4]);
 
