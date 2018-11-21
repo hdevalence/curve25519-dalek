@@ -738,13 +738,10 @@ mod test {
         for j in 0..1024 {
             a = a.square();
             ax4 = F51x4Reduced::from(ax4).square();
-            {
-                println!("j = {}", j);
-                let splits = ax4.split();
 
-                for i in 0..4 {
-                    assert_eq!(a, splits[i]);
-                }
+            let splits = ax4.split();
+            for i in 0..4 {
+                assert_eq!(a, splits[i]);
             }
         }
     }
