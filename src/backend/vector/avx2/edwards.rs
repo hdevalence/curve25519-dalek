@@ -536,4 +536,15 @@ mod test {
 
         b.iter(|| &P + &Q);
     }
+
+    #[bench]
+    fn bench_edwards_double(b: &mut Bencher) {
+        use constants;
+        use scalar::Scalar;
+        let P_ed = constants::ED25519_BASEPOINT_POINT;
+
+        let P = ExtendedPoint::from(P_ed);
+
+        b.iter(|| P.double());
+    }
 }
