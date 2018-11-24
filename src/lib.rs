@@ -9,21 +9,23 @@
 // - Henry de Valence <hdevalence@hdevalence.ca>
 
 #![no_std]
-
-#![cfg_attr(feature = "ifma_backend", feature(simd_ffi))]
-#![cfg_attr(feature = "ifma_backend", feature(link_llvm_intrinsics))]
+#![cfg_attr(
+    all(feature = "simd_backend", target_feature = "avx512ifma"),
+    feature(simd_ffi)
+)]
+#![cfg_attr(
+    all(feature = "simd_backend", target_feature = "avx512ifma"),
+    feature(link_llvm_intrinsics)
+)]
 #![cfg_attr(feature = "nightly", feature(test))]
-
 #![cfg_attr(all(feature = "alloc", not(feature = "std")), feature(alloc))]
 #![cfg_attr(feature = "nightly", feature(cfg_target_feature))]
 #![cfg_attr(feature = "nightly", feature(external_doc))]
-
 // Refuse to compile if documentation is missing, but only on nightly.
 //
 // This means that missing docs will still fail CI, but means we can use
 // README.md as the crate documentation.
 //#![cfg_attr(feature = "nightly", deny(missing_docs))]
-
 #![cfg_attr(feature = "nightly", doc(include = "../README.md"))]
 #![doc(html_logo_url = "https://doc.dalek.rs/assets/dalek-logo-clear.png")]
 
@@ -48,18 +50,18 @@ extern crate std;
 #[cfg(all(feature = "nightly", feature = "packed_simd"))]
 extern crate packed_simd;
 
-extern crate rand;
-extern crate clear_on_drop;
 extern crate byteorder;
+extern crate clear_on_drop;
 pub extern crate digest;
+extern crate rand;
 
 // Used for traits related to constant-time code.
 extern crate subtle;
 
-#[cfg(feature = "serde")]
-extern crate serde;
 #[cfg(all(test, feature = "serde"))]
 extern crate bincode;
+#[cfg(feature = "serde")]
+extern crate serde;
 
 // Internal macros. Must come first!
 #[macro_use]
@@ -104,7 +106,5 @@ pub(crate) mod prelude;
 pub(crate) mod window;
 
 // Temporarily re-export for cargo asm
-#[cfg(any(
-    all(feature = "ifma_backend", target_feature = "avx512ifma"),
-))]
+#[cfg(any(all(feature = "ifma_backend", target_feature = "avx512ifma"),))]
 pub use backend::vector::ifma;
