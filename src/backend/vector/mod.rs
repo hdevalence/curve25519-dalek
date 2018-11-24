@@ -27,3 +27,5 @@ pub mod avx2;
 #[cfg(all(feature = "ifma_backend", target_feature = "avx512ifma"))]
 pub mod ifma;
 
+pub mod scalar_mul;
+
