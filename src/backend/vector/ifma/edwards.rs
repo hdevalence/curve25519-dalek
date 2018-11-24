@@ -17,6 +17,7 @@ use subtle::ConditionallySelectable;
 use edwards;
 use window::{LookupTable, NafLookupTable5, NafLookupTable8};
 
+use super::constants;
 use super::field::{F51x4Reduced, F51x4Unreduced, Lanes, Shuffle};
 
 #[derive(Copy, Clone, Debug)]
@@ -53,6 +54,18 @@ impl From<ExtendedPoint> for CachedPoint {
         x = x.blend(&x.negate_lazy(), Lanes::D);
 
         CachedPoint(F51x4Reduced::from(x))
+    }
+}
+
+impl Default for ExtendedPoint {
+    fn default() -> ExtendedPoint {
+        ExtendedPoint::identity()
+    }
+}
+
+impl Identity for ExtendedPoint {
+    fn identity() -> ExtendedPoint {
+        constants::EXTENDEDPOINT_IDENTITY
     }
 }
 
@@ -133,6 +146,18 @@ impl<'a, 'b> Add<&'b CachedPoint> for &'a ExtendedPoint {
 
         // Return (S12*S14 S15*S13 S15*S14 S12*S13) = (X3 Y3 Z3 T3)
         ExtendedPoint(&t0 * &t1)
+    }
+}
+
+impl Default for CachedPoint {
+    fn default() -> CachedPoint {
+        CachedPoint::identity()
+    }
+}
+
+impl Identity for CachedPoint {
+    fn identity() -> CachedPoint {
+        constants::CACHEDPOINT_IDENTITY
     }
 }
 
