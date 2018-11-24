@@ -14,7 +14,7 @@ use packed_simd::u64x4;
 use window::NafLookupTable8;
 
 use super::edwards::{CachedPoint, ExtendedPoint};
-use super::field::F51x4Reduced;
+use super::field::{F51x4Reduced, F51x4Unreduced};
 
 /// The identity element as an `ExtendedPoint`.
 pub(crate) static EXTENDEDPOINT_IDENTITY: ExtendedPoint = ExtendedPoint(F51x4Unreduced([
