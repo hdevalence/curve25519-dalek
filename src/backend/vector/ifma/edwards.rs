@@ -311,26 +311,6 @@ mod test {
         doubling_test_helper(P);
     }
 
-    #[test]
-    fn generate_ifma_identity() {
-        let id = edwards::EdwardsPoint::identity();
-
-        println!("{:?}", ExtendedPoint::from(id));
-        println!("{:?}", CachedPoint::from(ExtendedPoint::from(id)));
-    }
-
-    #[test]
-    fn generate_ifma_odd_basepoint_table() {
-        use constants;
-        let P = constants::ED25519_BASEPOINT_POINT;
-
-        let table = NafLookupTable8::<CachedPoint>::from(&P);
-
-        println!("{:?}", table);
-
-        panic!();
-    }
-
     use test::Bencher;
 
     #[bench]
