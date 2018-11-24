@@ -287,6 +287,14 @@ mod test {
     }
 
     #[test]
+    fn generate_ifma_identity() {
+        let id = edwards::EdwardsPoint::identity();
+
+        println!("{:?}", ExtendedPoint::from(id));
+        println!("{:?}", CachedPoint::from(ExtendedPoint::from(id)));
+    }
+
+    #[test]
     fn generate_ifma_odd_basepoint_table() {
         use constants;
         let P = constants::ED25519_BASEPOINT_POINT;
