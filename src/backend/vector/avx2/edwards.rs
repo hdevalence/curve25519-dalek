@@ -45,8 +45,8 @@ use window::{LookupTable, NafLookupTable5, NafLookupTable8};
 
 use traits::Identity;
 
-use backend::vector::avx2::field::{FieldElement2625x4, Lanes, Shuffle};
-use backend::vector::avx2::constants;
+use super::constants;
+use super::field::{FieldElement2625x4, Lanes, Shuffle};
 
 /// A point on Curve25519, using parallel Edwards formulas for curve
 /// operations.
@@ -190,7 +190,7 @@ impl From<ExtendedPoint> for CachedPoint {
         x = x.blend(x.diff_sum(), Lanes::AB);
         // x = (X1 - Y1, X2 + Y2, Z2, T2) = (S2 S3 Z2 T2)
 
-        x = x * (121666, 121666, 2*121666, 2*121665);
+        x = x * (121666, 121666, 2 * 121666, 2 * 121665);
         // x = (121666*S2 121666*S3 2*121666*Z2 2*121665*T2)
 
         x = x.blend(-x, Lanes::D);
@@ -247,7 +247,7 @@ impl<'a, 'b> Add<&'b CachedPoint> for &'a ExtendedPoint {
         // coefficients grow by one bit.  So on input, `self` is
         // bounded with `b < 0.007` and `other` is bounded with
         // `b < 1.0`.
-        
+
         let mut tmp = self.0;
 
         tmp = tmp.blend(tmp.diff_sum(), Lanes::AB);
