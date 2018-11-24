@@ -15,7 +15,7 @@ extern crate digest;
 extern crate rand;
 extern crate subtle;
 
-#[cfg(all(feature = "nightly", any(feature = "avx2_backend", feature = "ifma_backend")))]
+#[cfg(all(feature = "nightly", feature = "packed_simd"))]
 extern crate packed_simd;
 
 use std::env;
