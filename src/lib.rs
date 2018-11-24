@@ -45,7 +45,7 @@ extern crate alloc;
 #[macro_use]
 extern crate std;
 
-#[cfg(all(feature = "nightly", any(feature = "avx2_backend", feature = "ifma_backend")))]
+#[cfg(all(feature = "nightly", feature = "packed_simd"))]
 extern crate packed_simd;
 
 extern crate rand;
