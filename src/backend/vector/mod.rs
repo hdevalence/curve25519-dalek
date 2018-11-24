@@ -26,8 +26,16 @@ compile_error!("simd_backend selected without target_feature=+avx2 or +avx512ifm
 
 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512ifma")))]
 pub mod avx2;
+#[cfg(all(target_feature = "avx2", not(target_feature = "avx512ifma")))]
+pub(crate) use self::avx2::{
+    constants::BASEPOINT_ODD_LOOKUP_TABLE, edwards::CachedPoint, edwards::ExtendedPoint,
+};
 
 #[cfg(all(target_feature = "avx512ifma"))]
 pub mod ifma;
+#[cfg(all(target_feature = "avx512ifma"))]
+pub(crate) use self::ifma::{
+    constants::BASEPOINT_ODD_LOOKUP_TABLE, edwards::CachedPoint, edwards::ExtendedPoint,
+};
 
 pub mod scalar_mul;
