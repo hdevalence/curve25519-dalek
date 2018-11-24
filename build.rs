@@ -1,5 +1,11 @@
-#![cfg_attr(feature = "ifma_backend", feature(simd_ffi))]
-#![cfg_attr(feature = "ifma_backend", feature(link_llvm_intrinsics))]
+#![cfg_attr(
+    all(feature = "simd_backend", target_feature = "avx512ifma"),
+    feature(simd_ffi)
+)]
+#![cfg_attr(
+    all(feature = "simd_backend", target_feature = "avx512ifma"),
+    feature(link_llvm_intrinsics)
+)]
 #![cfg_attr(all(feature = "alloc", not(feature = "std")), feature(alloc))]
 #![cfg_attr(feature = "nightly", feature(cfg_target_feature))]
 #![allow(unused_variables)]
