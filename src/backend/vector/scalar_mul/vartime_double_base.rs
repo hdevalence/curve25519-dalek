@@ -9,12 +9,12 @@
 // - Henry de Valence <hdevalence@hdevalence.ca>
 #![allow(non_snake_case)]
 
-use traits::Identity;
-use scalar::Scalar;
+use backend::vector::BASEPOINT_ODD_LOOKUP_TABLE;
+use backend::vector::{CachedPoint, ExtendedPoint};
 use edwards::EdwardsPoint;
+use scalar::Scalar;
+use traits::Identity;
 use window::NafLookupTable5;
-use backend::vector::avx2::edwards::{CachedPoint, ExtendedPoint};
-use backend::vector::avx2::constants::BASEPOINT_ODD_LOOKUP_TABLE;
 
 /// Compute \\(aA + bB\\) in variable time, where \\(B\\) is the Ed25519 basepoint.
 pub fn mul(a: &Scalar, A: &EdwardsPoint, b: &Scalar) -> EdwardsPoint {
