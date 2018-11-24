@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
 
-use traits::Identity;
-use scalar::Scalar;
+use backend::vector::{CachedPoint, ExtendedPoint};
 use edwards::EdwardsPoint;
-use backend::vector::avx2::edwards::{ExtendedPoint, CachedPoint};
+use scalar::Scalar;
+use traits::Identity;
 use window::LookupTable;
 
 /// Perform constant-time, variable-base scalar multiplication.
