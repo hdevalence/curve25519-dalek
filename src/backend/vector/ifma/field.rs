@@ -21,10 +21,10 @@ extern "C" {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct F51x4Unreduced([u64x4; 5]);
+pub struct F51x4Unreduced(pub(crate) [u64x4; 5]);
 
 #[derive(Copy, Clone, Debug)]
-pub struct F51x4Reduced([u64x4; 5]);
+pub struct F51x4Reduced(pub(crate) [u64x4; 5]);
 
 #[derive(Copy, Clone)]
 pub enum Shuffle {
