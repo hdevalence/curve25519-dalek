@@ -255,20 +255,6 @@ impl F51x4Reduced {
         unsafe {
             let x = &self.0;
 
-            // Represent values with coeff. 1
-            let mut z0_1 = u64x4::splat(0);
-            let mut z1_1 = u64x4::splat(0);
-            /*
-            let mut z2_1 = u64x4::splat(0);
-            let mut z3_1 = u64x4::splat(0);
-            let mut z4_1 = u64x4::splat(0);
-            let mut z5_1 = u64x4::splat(0);
-            let mut z6_1 = u64x4::splat(0);
-            let mut z7_1 = u64x4::splat(0);
-            let mut z8_1 = u64x4::splat(0);
-            let mut z9_1 = u64x4::splat(0);
-            */
-
             // Represent values with coeff. 2
             let mut z0_2 = u64x4::splat(0);
             let mut z1_2 = u64x4::splat(0);
@@ -278,12 +264,9 @@ impl F51x4Reduced {
             let mut z5_2 = u64x4::splat(0);
             let mut z6_2 = u64x4::splat(0);
             let mut z7_2 = u64x4::splat(0);
-            let mut z8_2 = u64x4::splat(0);
             let mut z9_2 = u64x4::splat(0);
 
             // Represent values with coeff. 4
-            let mut z0_4 = u64x4::splat(0);
-            let mut z1_4 = u64x4::splat(0);
             let mut z2_4 = u64x4::splat(0);
             let mut z3_4 = u64x4::splat(0);
             let mut z4_4 = u64x4::splat(0);
@@ -291,9 +274,7 @@ impl F51x4Reduced {
             let mut z6_4 = u64x4::splat(0);
             let mut z7_4 = u64x4::splat(0);
             let mut z8_4 = u64x4::splat(0);
-            let mut z9_4 = u64x4::splat(0);
 
-            // Wave 0
             let mut z0_1 = u64x4::splat(0);
             z0_1 = madd52lo(z0_1, x[0], x[0]);
 
@@ -347,7 +328,6 @@ impl F51x4Reduced {
             z5_1 += z5_2 << 1;
             z6_1 += z6_2 << 1;
             z7_1 += z7_2 << 1;
-            z8_1 += z8_2 << 1;
             z9_1 += z9_2 << 1;
 
             let mut t0 = u64x4::splat(0);
@@ -443,7 +423,6 @@ impl<'a> Mul<(u32, u32, u32, u32)> for &'a F51x4Reduced {
                 scalars.2 as u64,
                 scalars.3 as u64,
             );
-            let mask = u64x4::splat((1 << 51) - 1);
             let r19 = u64x4::splat(19);
 
             let mut z0lo = u64x4::splat(0);
