@@ -10,7 +10,7 @@
 #![allow(non_snake_case)]
 
 use core::ops::{Add, Mul, Neg};
-use packed_simd::{u64x4, FromBits, IntoBits};
+use packed_simd::{u64x4, IntoBits};
 
 use backend::serial::u64::field::FieldElement51;
 
