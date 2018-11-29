@@ -22,9 +22,11 @@ extern "C" {
     fn madd52hi(z: u64x4, x: u64x4, y: u64x4) -> u64x4;
 }
 
+/// A vector of four field elements in radix 2^51, with unreduced coefficients.
 #[derive(Copy, Clone, Debug)]
 pub struct F51x4Unreduced(pub(crate) [u64x4; 5]);
 
+/// A vector of four field elements in radix 2^51, with reduced coefficients.
 #[derive(Copy, Clone, Debug)]
 pub struct F51x4Reduced(pub(crate) [u64x4; 5]);
 
