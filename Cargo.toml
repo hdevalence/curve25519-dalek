@@ -80,3 +80,5 @@ avx2_backend = ["simd_backend"]
 # feature before the main-stage compilation.
 stage2_build = []
 
+[patch.crates-io]
+criterion = { git = "https://github.com/hdevalence/criterion.rs" }
