@@ -3,6 +3,12 @@ strategy.
 
 # IFMA instructions
 
+
+
+## IFMA for big-integer multiplications
+
+## An alternative strategy
+
 # Choice of radix
 
 # Reductions
