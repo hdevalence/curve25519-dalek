@@ -3,11 +3,114 @@ strategy.
 
 # IFMA instructions
 
-definition of what the instructions are
+AVX512-IFMA is an extension to AVX-512 consisting of two instructions:
+
+* `vpmadd52luq`: packed multiply of unsigned 52-bit integers and add
+  the low 52 product bits to 64-bit accumulators;
+* `vpmadd52huq`: packed multiply of unsigned 52-bit integers and add
+  the high 52 product bits to 64-bit accumulators;
+
+These operate on 64-bit lanes of their source vectors, taking the low
+52 bits of each lane of each source vector, computing the 104-bit
+products of each pair, and then adding either the high or low 52 bits
+of the 104-bit products to the 64-bit lanes of the destination vector.
+The multiplication is performed internally by reusing circuitry for
+floating-point arithmetic.  Although these instructions are part of
+AVX512, the AVX512VL (vector length) extension (present whenever IFMA
+is) allows using them with 512, 256, or 128-bit operands.
+
+This provides a major advantage to vectorized integer operations:
+previously, vector operations could only use a \\(32 \times 32
+\rightarrow 64\\)-bit multiplier, while serial code could use a
+\\(64\times 64 \rightarrow 128\\)-bit multiplier.
 
 ## IFMA for big-integer multiplications
 
-review of the implementation strategy for bigints (parallelism within a multiplication)
+A detailed example of the intended use of the IFMA instructions can be
+found in a 2016 paper by Gueron and Krasnov, [_Accelerating Big
+Integer Arithmetic Using Intel IFMA Extensions_][2016_gueron_krasnov].
+The basic idea is that multiplication of large integers (such as 1024,
+2048, or more bits) can be performed as follows.
+
+First, convert a “packed” 64-bit representation
+\\[
+\begin{aligned}
+x &= x'_0 + x'_1 2^{64} + x'_2 2^{128} + \cdots \\\\
+y &= y'_0 + y'_1 2^{64} + y'_2 2^{128} + \cdots 
+\end{aligned}
+\\]
+into a “redundant” 52-bit representation
+\\[
+\begin{aligned}
+x &= x_0 + x_1 2^{52} + x_2 2^{104} + \cdots \\\\
+y &= y_0 + y_1 2^{52} + y_2 2^{104} + \cdots 
+\end{aligned}
+\\]
+with each \\(x_i, y_j\\) in a 64-bit lane.
+
+Writing the product as \\(z = z_0 + z_1 2^{52} + z_2 2^{104} + \cdots\\),
+the “schoolbook” multiplication strategy gives
+\\[
+\begin{aligned}
+&z_0   &&=& x_0      &   y_0    &           &          &           &          &           &          &        &       \\\\
+&z_1   &&=& x_1      &   y_0    &+ x_0      &   y_1    &           &          &           &          &        &       \\\\
+&z_2   &&=& x_2      &   y_0    &+ x_1      &   y_1    &+ x_0      &   y_2    &           &          &        &       \\\\
+&z_3   &&=& x_3      &   y_0    &+ x_2      &   y_1    &+ x_1      &   y_2    &+ x_0      &   y_3    &        &       \\\\
+&z_4   &&=& \vdots\\;&\\;\vdots &+ x_3      &   y_1    &+ x_2      &   y_2    &+ x_1      &   y_3    &+ \cdots&       \\\\
+&z_5   &&=&          &          &  \vdots\\;&\\;\vdots &+ x_3      &   y_2    &+ x_2      &   y_3    &+ \cdots&       \\\\
+&z_6   &&=&          &          &           &          &  \vdots\\;&\\;\vdots &+ x_3      &   y_3    &+ \cdots&       \\\\
+&z_7   &&=&          &          &           &          &           &          &  \vdots\\;&\\;\vdots &+ \cdots&       \\\\
+&\vdots&&=&          &          &           &          &           &          &           &          &  \ddots&       \\\\
+\end{aligned}
+\\]
+Notice that the product coefficient \\(z_k\\), representing the value
+\\(z_k 2^{52k}\\), is the sum of all product terms
+\\(
+(x_i 2^{52 i}) (y_j 2^{52 j})
+\\)
+with \\(k = i + j\\).  
+Write the IFMA operators \\(\mathrm{lo}(a,b)\\), denoting the low
+\\(52\\) bits of \\(ab\\), and
+\\(\mathrm{hi}(a,b)\\), denoting the high \\(52\\) bits of 
+\\(ab\\).  
+Now we can rewrite the product terms as
+\\[
+\begin{aligned}
+(x_i 2^{52 i}) (y_j 2^{52 j})
+&=
+2^{52 (i+j)}(
+\mathrm{lo}(x_i, y_j) +
+\mathrm{hi}(x_i, y_j) 2^{52}
+)
+\\\\
+&=
+\mathrm{lo}(x_i, y_j) 2^{52 (i+j)} + 
+\mathrm{hi}(x_i, y_j) 2^{52 (i+j+1)}.
+\end{aligned}
+\\]
+This means that the low half of \\(x_i y_j\\) can be accumulated onto
+the product limb \\(z_{i+j}\\) and the high half can be directly
+accumulated onto the next-higher product limb \\(z_{i+j+1}\\) with no
+additional operations.  This allows rewriting the schoolbook
+multiplication into the form
+\\[
+\begin{aligned}
+&z_0   &&=& \mathrm{lo}(x_0,&y_0)      &                 &          &                 &          &                 &          &                 &          &        &     \\\\
+&z_1   &&=& \mathrm{lo}(x_1,&y_0)      &+\mathrm{hi}(x_0,&y_0)      &+\mathrm{lo}(x_0,&y_1)      &                 &          &                 &          &        &     \\\\
+&z_2   &&=& \mathrm{lo}(x_2,&y_0)      &+\mathrm{hi}(x_1,&y_0)      &+\mathrm{lo}(x_1,&y_1)      &+\mathrm{hi}(x_0,&y_1)      &+\mathrm{lo}(x_0,&y_2)      &        &     \\\\
+&z_3   &&=& \mathrm{lo}(x_3,&y_0)      &+\mathrm{hi}(x_2,&y_0)      &+\mathrm{lo}(x_2,&y_1)      &+\mathrm{hi}(x_1,&y_1)      &+\mathrm{lo}(x_1,&y_2)      &+ \cdots&     \\\\
+&z_4   &&=&        \vdots\\;&\\;\vdots &+\mathrm{hi}(x_3,&y_0)      &+\mathrm{lo}(x_3,&y_1)      &+\mathrm{hi}(x_2,&y_1)      &+\mathrm{lo}(x_2,&y_2)      &+ \cdots&     \\\\
+&z_5   &&=&                 &          &        \vdots\\;&\\;\vdots &        \vdots\\;&\\;\vdots &+\mathrm{hi}(x_3,&y_1)      &+\mathrm{lo}(x_3,&y_2)      &+ \cdots&     \\\\
+&z_6   &&=&                 &          &                 &          &                 &          &        \vdots\\;&\\;\vdots &        \vdots\\;&\\;\vdots &+ \cdots&     \\\\
+&\vdots&&=&                 &          &                 &          &                 &          &                 &          &                 &          &  \ddots&     \\\\
+\end{aligned}
+\\]
+Gueron and Krasnov implement multiplication by constructing vectors
+out of the columns of this diagram, so that the source operands for
+the IFMA instructions are of the form \\((x_0, x_1, x_2, \ldots)\\) 
+and \\((y_i, y_i, y_i, \ldots)\\). 
+After performing the multiplication,
+the product terms \\(z_i\\) are then repacked into a 64-bit representation.
 
 ## An alternative strategy
 
@@ -44,7 +147,9 @@ latency).
 
 The inputs to IFMA instructions are 52 bits wide, so the radix \\(r\\)
 used to represent a multiprecision integer must be \\( r \leq 52 \\).
-The obvious choice is the "native" radix \\(r = 52\\).  This choice
+The obvious choice is the "native" radix \\(r = 52\\).
+
+As described above, this choice
 has the advantage that for \\(x_i, y_j \in [0,2^{52})\\), the product term
 \\[
 \begin{aligned}
@@ -57,14 +162,11 @@ has the advantage that for \\(x_i, y_j \in [0,2^{52})\\), the product term
 \\\\
 &=
 \mathrm{lo}(x_i, y_j) 2^{52 (i+j)} + 
-\mathrm{hi}(x_i, y_j) 2^{52 (i+j+1)}.
+\mathrm{hi}(x_i, y_j) 2^{52 (i+j+1)},
 \end{aligned}
 \\]
-This means that the low half of \\(x_i y_j\\) can be accumulated onto
-the product limb \\(z_{i+j}\\) and the high half can be directly
-accumulated onto the next-higher product limb \\(z_{i+j+1}\\) with no
-additional operations.
-
+so that the low and high halves of the product can be directly accumulated 
+onto the product limbs.
 In contrast, when using a smaller radix \\(r = 52 - k\\), 
 the product term has the form
 \\[
@@ -90,7 +192,7 @@ are placed into the low half instead of the high half.  This means
 that the high half of the product cannot be directly accumulated onto
 \\(z_{i+j+1}\\), but must first be multiplied by \\(2^k\\) (i.e., left
 shifted by \\(k\\)).  In addition, the low half of the product is
-\\(52\\) bits large instead of \\(r\\) bits.  
+\\(52\\) bits large instead of \\(r\\) bits.
 
 ## Handling offset product terms
 
@@ -454,7 +556,22 @@ so there's a bunch of blend instructions that could be omitted.
 
 Although the multiplications and squarings are much faster, there's no
 speedup to the additions and subtractions, so there are diminishing
-returns.
+returns.  In fact, the complications in the doubling formulas mean
+that doubling is actually slower than readdition.  This also suggests
+that moving to 512-bit vectors won't be much help for a strategy aimed
+at parallelism within a group operation, so to extract performance
+gains from 512-bit vectors it will probably be necessary to create a
+parallel-friendly multiscalar multiplication algorithm.  This could
+also help with reducing shuffle pressure.
+
+The squaring implementation could probably be optimized, but without
+`perf` support on Cannonlake it's difficult to make actual
+measurements.
+
+Another improvement would be to implement vectorized square root
+computations, which would allow creating an iterator adaptor for point
+decompression that bunched decompression operations and executed them
+in parallel.  This would accelerate batch verification.
 
 [2016_gueron_krasnov]: https://ieeexplore.ieee.org/document/7563269
 [2018_drucker_gueron]: https://eprint.iacr.org/2018/335
