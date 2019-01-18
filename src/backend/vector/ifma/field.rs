@@ -20,11 +20,11 @@ extern "C" {
     fn madd52hi(z: u64x4, x: u64x4, y: u64x4) -> u64x4;
 }
 
-#[derive(Copy, Clone)]
-pub struct F51x4Unreduced([u64x4; 5]);
+#[derive(Copy, Clone, Debug)]
+pub struct F51x4Unreduced(pub(crate) [u64x4; 5]);
 
-#[derive(Copy, Clone)]
-pub struct F51x4Reduced([u64x4; 5]);
+#[derive(Copy, Clone, Debug)]
+pub struct F51x4Reduced(pub(crate) [u64x4; 5]);
 
 impl F51x4Unreduced {
     pub fn new(
